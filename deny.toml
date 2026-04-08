@@ -1,0 +1,49 @@
+# cargo-deny configuration for RuddyDoc
+# This enforces license and dependency policies across the workspace
+
+[advisories]
+version = 2
+# Skip advisory database checks for Phase 1
+# Will be enabled in Phase 6
+db-path = "~/.cargo/advisory-db"
+db-urls = ["https://github.com/rustsec/advisory-db"]
+ignore = []
+
+[licenses]
+version = 2
+# Legal requirement: ban copyleft licenses
+# We use an allowlist approach - only these licenses are permitted
+allow = [
+    "MIT",
+    "Apache-2.0",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "Unlicense",
+    "Zlib",
+    "0BSD",
+    "CC0-1.0",
+    "MPL-2.0",  # Weak copyleft - commonly used in Rust ecosystem (cssparser, etc.)
+]
+confidence-threshold = 0.8
+# Any license not in the allow list will be denied
+exceptions = []
+
+# Some crates may have non-standard license identifiers
+[[licenses.clarify]]
+name = "ring"
+expression = "MIT AND ISC AND OpenSSL"
+license-files = [
+    { path = "LICENSE", hash = 0xbd0eed23 }
+]
+
+[bans]
+multiple-versions = "warn"
+wildcards = "allow"
+highlight = "all"
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
+allow-git = []

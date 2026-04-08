@@ -1,0 +1,27 @@
+[package]
+name = "ruddydoc-server"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "HTTP REST API and MCP server for RuddyDoc document conversion"
+
+[dependencies]
+ruddydoc-core = { workspace = true }
+ruddydoc-graph = { workspace = true }
+ruddydoc-converter = { workspace = true }
+ruddydoc-export = { workspace = true }
+ruddydoc-ontology = { workspace = true }
+
+axum = "0.8"
+tokio = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tower = "0.5"
+tower-http = { version = "0.6", features = ["cors"] }
+uuid = { version = "1", features = ["v4"] }
+tracing = "0.1"
+
+[dev-dependencies]
+tower = { version = "0.5", features = ["util"] }
+http-body-util = "0.1"

@@ -1,0 +1,26 @@
+[package]
+name = "ruddydoc-models"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "ONNX Runtime ML model integration for RuddyDoc"
+
+[features]
+default = ["onnx"]
+onnx = ["dep:ort"]
+vlm-api = ["dep:reqwest"]
+
+[dependencies]
+ruddydoc-core = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+[dependencies.ort]
+workspace = true
+optional = true
+
+[dependencies.reqwest]
+version = "0.12"
+features = ["json", "blocking"]
+optional = true

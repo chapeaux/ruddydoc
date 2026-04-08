@@ -1,0 +1,52 @@
+= RuddyDoc User Guide
+:author: Jane Doe
+:revdate: 2024-01-15
+
+== Introduction
+
+RuddyDoc is a semantically rich document converter.
+It transforms documents into RDF graphs.
+
+=== Features
+
+* Markdown support
+* AsciiDoc support
+* WebVTT support
+
+=== Roadmap
+
+. Implement core backends
+. Add export formats
+. Release v1.0
+
+== Code Examples
+
+[source,rust]
+----
+fn main() {
+    println!("Hello, RuddyDoc!");
+}
+----
+
+== Data Tables
+
+|===
+| Format | Status
+| Markdown | Complete
+| AsciiDoc | In Progress
+|===
+
+== Media
+
+image::logo.png[RuddyDoc Logo]
+
+== Quotes
+
+____
+Knowledge is power.
+____
+
+== Notes
+
+[NOTE]
+This is an important note about the project.

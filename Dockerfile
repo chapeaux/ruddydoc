@@ -1,29 +1,43 @@
-FROM python:3.11-slim-bookworm
+# Multi-stage build for RuddyDoc
+# Stage 1: Build the Rust binary
+FROM rust:1.85-slim AS builder
 
-ENV GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=no"
+WORKDIR /build
 
-RUN apt-get update \
-    && apt-get install -y libgl1 libglib2.0-0 curl wget git procps \
+# Install build dependencies
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    pkg-config \
+    libssl-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# This will install torch with *only* cpu support
-# Remove the --extra-index-url part if you want to install all the gpu requirements
-# For more details in the different torch distribution visit https://pytorch.org/.
-RUN pip install --no-cache-dir docling --extra-index-url https://download.pytorch.org/whl/cpu
+# Copy workspace files
+COPY Cargo.toml Cargo.lock ./
+COPY crates ./crates
+COPY ontology ./ontology
 
-ENV HF_HOME=/tmp/
-ENV TORCH_HOME=/tmp/
+# Build release binary
+RUN cargo build --release -p ruddydoc-cli
 
-COPY docs/examples/minimal.py /root/minimal.py
+# Strip the binary to reduce size
+RUN strip target/release/ruddydoc
 
-RUN docling-tools models download
+# Stage 2: Create minimal runtime image
+FROM debian:bookworm-slim
 
-# On container environments, always set a thread budget to avoid undesired thread congestion.
-ENV OMP_NUM_THREADS=4
+# Install runtime dependencies
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
 
-# On container shell:
-# > cd /root/
-# > python minimal.py
+# Copy the binary from builder
+COPY --from=builder /build/target/release/ruddydoc /usr/local/bin/ruddydoc
 
-# Running as `docker run -e DOCLING_ARTIFACTS_PATH=/root/.cache/docling/models` will use the
-# model weights included in the container image.
+# Set up a non-root user
+RUN useradd -m -u 1000 ruddydoc
+USER ruddydoc
+WORKDIR /home/ruddydoc
+
+ENTRYPOINT ["ruddydoc"]
+CMD ["--help"]

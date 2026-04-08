@@ -1,0 +1,620 @@
+# =============================================================================
+# RuddyDoc Document Ontology
+# =============================================================================
+#
+# A formal ontology for representing parsed document structure as RDF knowledge
+# graphs. Designed for AI agent comprehension: an agent should be able to
+# discover and query document structure through SPARQL without prior knowledge
+# of this ontology.
+#
+# Namespace:  https://ruddydoc.chapeaux.io/ontology#
+# Prefix:     rdoc:
+# Version:    0.1.0
+# Date:       2026-04-07
+# License:    Apache-2.0
+#
+# Named graph conventions:
+#   Ontology graph:    urn:ruddydoc:ontology
+#   Document graph:    urn:ruddydoc:doc:{document_hash}
+#   Element IRI:       urn:ruddydoc:doc:{document_hash}/{element_id}
+#
+# =============================================================================
+
+@prefix rdoc:    <https://ruddydoc.chapeaux.io/ontology#> .
+@prefix rdf:     <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:    <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix owl:     <http://www.w3.org/2002/07/owl#> .
+@prefix xsd:     <http://www.w3.org/2001/XMLSchema#> .
+@prefix schema:  <https://schema.org/> .
+@prefix dc:      <http://purl.org/dc/elements/1.1/> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix sh:      <http://www.w3.org/ns/shacl#> .
+@prefix skos:    <http://www.w3.org/2004/02/skos/core#> .
+
+# =============================================================================
+# Ontology Header
+# =============================================================================
+
+rdoc: a owl:Ontology ;
+  rdfs:label "RuddyDoc Document Ontology" ;
+  rdfs:comment "An ontology for representing parsed document structure as RDF knowledge graphs. Covers document hierarchy, text elements, tables, pictures, spatial layout, provenance, and cross-references. Bridges to schema.org for document metadata." ;
+  owl:versionInfo "0.1.0" ;
+  dcterms:created "2026-04-07"^^xsd:date ;
+  dcterms:license <https://www.apache.org/licenses/LICENSE-2.0> ;
+  dcterms:creator "RuddyDoc Team" .
+
+# =============================================================================
+# Classes -- Top-level containers
+# =============================================================================
+
+rdoc:Document a rdfs:Class ;
+  rdfs:subClassOf schema:CreativeWork ;
+  rdfs:label "Document" ;
+  rdfs:comment "A parsed document. The top-level container holding all pages, elements, and metadata. Each Document resides in its own named graph (urn:ruddydoc:doc:{hash})." .
+
+rdoc:Page a rdfs:Class ;
+  rdfs:label "Page" ;
+  rdfs:comment "A page within a paginated document (PDF, PPTX, image). Non-paginated formats (Markdown, HTML, CSV) typically have no Page instances." .
+
+# =============================================================================
+# Classes -- Document elements (structural hierarchy)
+# =============================================================================
+
+rdoc:DocumentElement a rdfs:Class ;
+  rdfs:label "Document Element" ;
+  rdfs:comment "Abstract base class for any structural element within a document. All content-bearing nodes are subclasses of DocumentElement." .
+
+# -- Text elements --
+
+rdoc:TextElement a rdfs:Class ;
+  rdfs:subClassOf rdoc:DocumentElement ;
+  rdfs:label "Text Element" ;
+  rdfs:comment "A text-bearing element such as a paragraph, heading, list item, or code block. Always has textContent." .
+
+rdoc:Title a rdfs:Class ;
+  rdfs:subClassOf rdoc:TextElement ;
+  rdfs:label "Title" ;
+  rdfs:comment "The main title of the document or a major titled section." .
+
+rdoc:SectionHeader a rdfs:Class ;
+  rdfs:subClassOf rdoc:TextElement ;
+  rdfs:label "Section Header" ;
+  rdfs:comment "A heading that introduces a section. Has a headingLevel (1-6)." .
+
+rdoc:Paragraph a rdfs:Class ;
+  rdfs:subClassOf rdoc:TextElement ;
+  rdfs:label "Paragraph" ;
+  rdfs:comment "A block of body text." .
+
+rdoc:ListItem a rdfs:Class ;
+  rdfs:subClassOf rdoc:TextElement ;
+  rdfs:label "List Item" ;
+  rdfs:comment "A single item within an ordered or unordered list." .
+
+rdoc:Footnote a rdfs:Class ;
+  rdfs:subClassOf rdoc:TextElement ;
+  rdfs:label "Footnote" ;
+  rdfs:comment "A footnote or endnote providing supplementary information." .
+
+rdoc:Caption a rdfs:Class ;
+  rdfs:subClassOf rdoc:TextElement ;
+  rdfs:label "Caption" ;
+  rdfs:comment "A caption describing a figure, table, or other element." .
+
+rdoc:Code a rdfs:Class ;
+  rdfs:subClassOf rdoc:TextElement ;
+  rdfs:label "Code Block" ;
+  rdfs:comment "A block of source code or preformatted text. May have a programming language annotation." .
+
+rdoc:Formula a rdfs:Class ;
+  rdfs:subClassOf rdoc:TextElement ;
+  rdfs:label "Formula" ;
+  rdfs:comment "A mathematical formula or equation, typically in LaTeX or MathML notation." .
+
+rdoc:Reference a rdfs:Class ;
+  rdfs:subClassOf rdoc:TextElement ;
+  rdfs:label "Bibliographic Reference" ;
+  rdfs:comment "A bibliographic reference or citation entry (e.g., in a bibliography section)." .
+
+rdoc:Hyperlink a rdfs:Class ;
+  rdfs:subClassOf rdoc:TextElement ;
+  rdfs:label "Hyperlink" ;
+  rdfs:comment "An inline or block-level link element with a target URL." .
+
+# -- Table elements --
+
+rdoc:TableElement a rdfs:Class ;
+  rdfs:subClassOf rdoc:DocumentElement ;
+  rdfs:label "Table" ;
+  rdfs:comment "A table with rows, columns, and cells. Contains TableCell instances via hasCell." .
+
+rdoc:TableCell a rdfs:Class ;
+  rdfs:label "Table Cell" ;
+  rdfs:comment "An individual cell within a table. Identified by row and column indices." .
+
+# -- Picture elements --
+
+rdoc:PictureElement a rdfs:Class ;
+  rdfs:subClassOf rdoc:DocumentElement ;
+  rdfs:label "Picture" ;
+  rdfs:comment "An image, figure, diagram, or chart embedded in the document." .
+
+# -- Key-value elements --
+
+rdoc:KeyValueItem a rdfs:Class ;
+  rdfs:subClassOf rdoc:DocumentElement ;
+  rdfs:label "Key-Value Item" ;
+  rdfs:comment "A form field or key-value pair extracted from structured documents (e.g., PDF forms, DOCX fields)." .
+
+# -- Grouping elements --
+
+rdoc:Group a rdfs:Class ;
+  rdfs:subClassOf rdoc:DocumentElement ;
+  rdfs:label "Group" ;
+  rdfs:comment "A logical grouping container for elements (e.g., a section, a list group, a figure with caption)." .
+
+rdoc:OrderedList a rdfs:Class ;
+  rdfs:subClassOf rdoc:Group ;
+  rdfs:label "Ordered List" ;
+  rdfs:comment "An ordered (numbered) list containing ListItem elements." .
+
+rdoc:UnorderedList a rdfs:Class ;
+  rdfs:subClassOf rdoc:Group ;
+  rdfs:label "Unordered List" ;
+  rdfs:comment "An unordered (bulleted) list containing ListItem elements." .
+
+# -- Page furniture --
+
+rdoc:Furniture a rdfs:Class ;
+  rdfs:subClassOf rdoc:DocumentElement ;
+  rdfs:label "Furniture" ;
+  rdfs:comment "Page furniture: repeated elements like headers, footers, and page numbers that are not part of the document body content." .
+
+rdoc:PageHeader a rdfs:Class ;
+  rdfs:subClassOf rdoc:Furniture ;
+  rdfs:label "Page Header" ;
+  rdfs:comment "A running header at the top of a page." .
+
+rdoc:PageFooter a rdfs:Class ;
+  rdfs:subClassOf rdoc:Furniture ;
+  rdfs:label "Page Footer" ;
+  rdfs:comment "A running footer at the bottom of a page." .
+
+# -- Spatial layout --
+
+rdoc:BoundingBox a rdfs:Class ;
+  rdfs:label "Bounding Box" ;
+  rdfs:comment "A rectangular spatial position on a page, defined by left, top, right, and bottom coordinates in points (1/72 inch)." .
+
+# -- Provenance --
+
+rdoc:Provenance a rdfs:Class ;
+  rdfs:label "Provenance" ;
+  rdfs:comment "Metadata about how a document element was detected or extracted, including the model or backend responsible and its confidence." .
+
+# =============================================================================
+# Properties -- Document-level
+# =============================================================================
+
+rdoc:hasElement a rdf:Property ;
+  rdfs:domain rdoc:Document ;
+  rdfs:range rdoc:DocumentElement ;
+  rdfs:label "has element" ;
+  rdfs:comment "Links a document to one of its structural elements." .
+
+rdoc:hasPage a rdf:Property ;
+  rdfs:domain rdoc:Document ;
+  rdfs:range rdoc:Page ;
+  rdfs:label "has page" ;
+  rdfs:comment "Links a document to one of its pages (for paginated formats)." .
+
+rdoc:sourceFormat a rdf:Property ;
+  rdfs:domain rdoc:Document ;
+  rdfs:range xsd:string ;
+  rdfs:label "source format" ;
+  rdfs:comment "The input format of the document (e.g., 'pdf', 'docx', 'html', 'md', 'csv')." .
+
+rdoc:documentHash a rdf:Property ;
+  rdfs:domain rdoc:Document ;
+  rdfs:range xsd:string ;
+  rdfs:label "document hash" ;
+  rdfs:comment "A content-based hash uniquely identifying this document. Used in the named graph IRI (urn:ruddydoc:doc:{hash})." .
+
+rdoc:fileName a rdf:Property ;
+  rdfs:domain rdoc:Document ;
+  rdfs:range xsd:string ;
+  rdfs:label "file name" ;
+  rdfs:comment "The original file name of the source document." .
+
+rdoc:fileSize a rdf:Property ;
+  rdfs:domain rdoc:Document ;
+  rdfs:range xsd:long ;
+  rdfs:label "file size" ;
+  rdfs:comment "The size of the source file in bytes." .
+
+rdoc:pageCount a rdf:Property ;
+  rdfs:domain rdoc:Document ;
+  rdfs:range xsd:integer ;
+  rdfs:label "page count" ;
+  rdfs:comment "The total number of pages in the document (for paginated formats)." .
+
+rdoc:language a rdf:Property ;
+  rdfs:domain rdoc:Document ;
+  rdfs:range xsd:string ;
+  rdfs:label "language" ;
+  rdfs:comment "The primary language of the document as a BCP 47 tag (e.g., 'en', 'fr', 'zh-Hans')." .
+
+# Dublin Core properties are reused directly for document metadata:
+#   dcterms:title    -- document title (rdfs:range rdfs:Literal)
+#   dcterms:creator  -- author or creator
+#   dcterms:date     -- publication or creation date
+#   dcterms:subject  -- topic or keywords
+#   dcterms:description -- abstract or summary
+
+# =============================================================================
+# Properties -- Page-level
+# =============================================================================
+
+rdoc:pageNumber a rdf:Property ;
+  rdfs:domain rdoc:Page ;
+  rdfs:range xsd:positiveInteger ;
+  rdfs:label "page number" ;
+  rdfs:comment "The 1-based page number within the document." .
+
+rdoc:pageWidth a rdf:Property ;
+  rdfs:domain rdoc:Page ;
+  rdfs:range xsd:float ;
+  rdfs:label "page width" ;
+  rdfs:comment "The width of the page in points (1/72 inch)." .
+
+rdoc:pageHeight a rdf:Property ;
+  rdfs:domain rdoc:Page ;
+  rdfs:range xsd:float ;
+  rdfs:label "page height" ;
+  rdfs:comment "The height of the page in points (1/72 inch)." .
+
+# =============================================================================
+# Properties -- Element-level (structural)
+# =============================================================================
+
+rdoc:textContent a rdf:Property ;
+  rdfs:domain rdoc:TextElement ;
+  rdfs:range xsd:string ;
+  rdfs:label "text content" ;
+  rdfs:comment "The plain text content of a text-bearing element." .
+
+rdoc:readingOrder a rdf:Property ;
+  rdfs:domain rdoc:DocumentElement ;
+  rdfs:range xsd:nonNegativeInteger ;
+  rdfs:label "reading order" ;
+  rdfs:comment "The 0-based position of this element in the document's reading order. Determines the sequential flow of content." .
+
+rdoc:onPage a rdf:Property ;
+  rdfs:domain rdoc:DocumentElement ;
+  rdfs:range rdoc:Page ;
+  rdfs:label "on page" ;
+  rdfs:comment "The page on which this element appears." .
+
+rdoc:headingLevel a rdf:Property ;
+  rdfs:domain rdoc:SectionHeader ;
+  rdfs:range xsd:integer ;
+  rdfs:label "heading level" ;
+  rdfs:comment "The heading depth level (1 = top-level heading, 6 = deepest). Corresponds to HTML h1-h6." .
+
+rdoc:parentElement a rdf:Property ;
+  rdfs:domain rdoc:DocumentElement ;
+  rdfs:range rdoc:DocumentElement ;
+  rdfs:label "parent element" ;
+  rdfs:comment "The parent of this element in the document tree structure." .
+
+rdoc:childElement a rdf:Property ;
+  rdfs:domain rdoc:DocumentElement ;
+  rdfs:range rdoc:DocumentElement ;
+  rdfs:label "child element" ;
+  rdfs:comment "A child of this element in the document tree structure." .
+
+rdoc:nextElement a rdf:Property ;
+  rdfs:domain rdoc:DocumentElement ;
+  rdfs:range rdoc:DocumentElement ;
+  rdfs:label "next element" ;
+  rdfs:comment "The next sibling element in reading order within the same parent." .
+
+rdoc:previousElement a rdf:Property ;
+  rdfs:domain rdoc:DocumentElement ;
+  rdfs:range rdoc:DocumentElement ;
+  rdfs:label "previous element" ;
+  rdfs:comment "The previous sibling element in reading order within the same parent." .
+
+rdoc:codeLanguage a rdf:Property ;
+  rdfs:domain rdoc:Code ;
+  rdfs:range xsd:string ;
+  rdfs:label "code language" ;
+  rdfs:comment "The programming language of a code block (e.g., 'python', 'rust', 'javascript')." .
+
+rdoc:linkTarget a rdf:Property ;
+  rdfs:domain rdoc:Hyperlink ;
+  rdfs:range xsd:anyURI ;
+  rdfs:label "link target" ;
+  rdfs:comment "The target URL of a hyperlink element." .
+
+rdoc:linkText a rdf:Property ;
+  rdfs:domain rdoc:Hyperlink ;
+  rdfs:range xsd:string ;
+  rdfs:label "link text" ;
+  rdfs:comment "The visible anchor text of a hyperlink element." .
+
+# =============================================================================
+# Properties -- Key-Value Item
+# =============================================================================
+
+rdoc:keyName a rdf:Property ;
+  rdfs:domain rdoc:KeyValueItem ;
+  rdfs:range xsd:string ;
+  rdfs:label "key name" ;
+  rdfs:comment "The key (field name) of a key-value pair." .
+
+rdoc:keyValue a rdf:Property ;
+  rdfs:domain rdoc:KeyValueItem ;
+  rdfs:range xsd:string ;
+  rdfs:label "key value" ;
+  rdfs:comment "The value of a key-value pair." .
+
+# =============================================================================
+# Properties -- Bounding box (spatial layout)
+# =============================================================================
+
+rdoc:hasBoundingBox a rdf:Property ;
+  rdfs:domain rdoc:DocumentElement ;
+  rdfs:range rdoc:BoundingBox ;
+  rdfs:label "has bounding box" ;
+  rdfs:comment "Links an element to its spatial bounding box on a page." .
+
+rdoc:bboxLeft a rdf:Property ;
+  rdfs:domain rdoc:BoundingBox ;
+  rdfs:range xsd:float ;
+  rdfs:label "left" ;
+  rdfs:comment "The x-coordinate of the left edge of the bounding box, in points." .
+
+rdoc:bboxTop a rdf:Property ;
+  rdfs:domain rdoc:BoundingBox ;
+  rdfs:range xsd:float ;
+  rdfs:label "top" ;
+  rdfs:comment "The y-coordinate of the top edge of the bounding box, in points." .
+
+rdoc:bboxRight a rdf:Property ;
+  rdfs:domain rdoc:BoundingBox ;
+  rdfs:range xsd:float ;
+  rdfs:label "right" ;
+  rdfs:comment "The x-coordinate of the right edge of the bounding box, in points." .
+
+rdoc:bboxBottom a rdf:Property ;
+  rdfs:domain rdoc:BoundingBox ;
+  rdfs:range xsd:float ;
+  rdfs:label "bottom" ;
+  rdfs:comment "The y-coordinate of the bottom edge of the bounding box, in points." .
+
+rdoc:bboxPage a rdf:Property ;
+  rdfs:domain rdoc:BoundingBox ;
+  rdfs:range rdoc:Page ;
+  rdfs:label "bounding box page" ;
+  rdfs:comment "The page to which this bounding box's coordinates refer." .
+
+# =============================================================================
+# Properties -- Table-specific
+# =============================================================================
+
+rdoc:hasCell a rdf:Property ;
+  rdfs:domain rdoc:TableElement ;
+  rdfs:range rdoc:TableCell ;
+  rdfs:label "has cell" ;
+  rdfs:comment "Links a table to one of its cells." .
+
+rdoc:cellRow a rdf:Property ;
+  rdfs:domain rdoc:TableCell ;
+  rdfs:range xsd:nonNegativeInteger ;
+  rdfs:label "row" ;
+  rdfs:comment "The 0-based row index of this cell within the table." .
+
+rdoc:cellColumn a rdf:Property ;
+  rdfs:domain rdoc:TableCell ;
+  rdfs:range xsd:nonNegativeInteger ;
+  rdfs:label "column" ;
+  rdfs:comment "The 0-based column index of this cell within the table." .
+
+rdoc:cellRowSpan a rdf:Property ;
+  rdfs:domain rdoc:TableCell ;
+  rdfs:range xsd:positiveInteger ;
+  rdfs:label "row span" ;
+  rdfs:comment "The number of rows this cell spans. Defaults to 1." .
+
+rdoc:cellColSpan a rdf:Property ;
+  rdfs:domain rdoc:TableCell ;
+  rdfs:range xsd:positiveInteger ;
+  rdfs:label "column span" ;
+  rdfs:comment "The number of columns this cell spans. Defaults to 1." .
+
+rdoc:cellText a rdf:Property ;
+  rdfs:domain rdoc:TableCell ;
+  rdfs:range xsd:string ;
+  rdfs:label "cell text" ;
+  rdfs:comment "The text content of this table cell." .
+
+rdoc:isHeader a rdf:Property ;
+  rdfs:domain rdoc:TableCell ;
+  rdfs:range xsd:boolean ;
+  rdfs:label "is header cell" ;
+  rdfs:comment "Whether this cell is a header cell (true) or a data cell (false)." .
+
+rdoc:rowCount a rdf:Property ;
+  rdfs:domain rdoc:TableElement ;
+  rdfs:range xsd:nonNegativeInteger ;
+  rdfs:label "row count" ;
+  rdfs:comment "The total number of rows in this table." .
+
+rdoc:columnCount a rdf:Property ;
+  rdfs:domain rdoc:TableElement ;
+  rdfs:range xsd:nonNegativeInteger ;
+  rdfs:label "column count" ;
+  rdfs:comment "The total number of columns in this table." .
+
+# =============================================================================
+# Properties -- Picture-specific
+# =============================================================================
+
+rdoc:pictureData a rdf:Property ;
+  rdfs:domain rdoc:PictureElement ;
+  rdfs:range xsd:base64Binary ;
+  rdfs:label "picture data" ;
+  rdfs:comment "The binary image data encoded as base64." .
+
+rdoc:pictureFormat a rdf:Property ;
+  rdfs:domain rdoc:PictureElement ;
+  rdfs:range xsd:string ;
+  rdfs:label "picture format" ;
+  rdfs:comment "The image format (e.g., 'png', 'jpeg', 'svg', 'tiff')." .
+
+rdoc:hasCaption a rdf:Property ;
+  rdfs:domain rdoc:PictureElement ;
+  rdfs:range rdoc:Caption ;
+  rdfs:label "has caption" ;
+  rdfs:comment "Links a picture to its caption element." .
+
+rdoc:pictureCategory a rdf:Property ;
+  rdfs:domain rdoc:PictureElement ;
+  rdfs:range xsd:string ;
+  rdfs:label "picture category" ;
+  rdfs:comment "A classification of the picture type (e.g., 'chart', 'diagram', 'photo', 'logo', 'screenshot')." .
+
+rdoc:altText a rdf:Property ;
+  rdfs:domain rdoc:PictureElement ;
+  rdfs:range xsd:string ;
+  rdfs:label "alt text" ;
+  rdfs:comment "Alternative text description of the image for accessibility." .
+
+rdoc:imageWidth a rdf:Property ;
+  rdfs:domain rdoc:PictureElement ;
+  rdfs:range xsd:nonNegativeInteger ;
+  rdfs:label "image width" ;
+  rdfs:comment "The width of the image in pixels." .
+
+rdoc:imageHeight a rdf:Property ;
+  rdfs:domain rdoc:PictureElement ;
+  rdfs:range xsd:nonNegativeInteger ;
+  rdfs:label "image height" ;
+  rdfs:comment "The height of the image in pixels." .
+
+# =============================================================================
+# Properties -- Time-based (WebVTT, audio, video)
+# =============================================================================
+
+rdoc:startTime a rdf:Property ;
+  rdfs:domain rdoc:DocumentElement ;
+  rdfs:range xsd:duration ;
+  rdfs:label "start time" ;
+  rdfs:comment "The start timestamp of a timed element (e.g., a WebVTT cue), as an xsd:duration from the beginning of the media." .
+
+rdoc:endTime a rdf:Property ;
+  rdfs:domain rdoc:DocumentElement ;
+  rdfs:range xsd:duration ;
+  rdfs:label "end time" ;
+  rdfs:comment "The end timestamp of a timed element (e.g., a WebVTT cue), as an xsd:duration from the beginning of the media." .
+
+rdoc:duration a rdf:Property ;
+  rdfs:domain rdoc:Document ;
+  rdfs:range xsd:duration ;
+  rdfs:label "duration" ;
+  rdfs:comment "The total duration of a media document (audio, video)." .
+
+# =============================================================================
+# Properties -- Provenance
+# =============================================================================
+
+rdoc:hasProvenance a rdf:Property ;
+  rdfs:domain rdoc:DocumentElement ;
+  rdfs:range rdoc:Provenance ;
+  rdfs:label "has provenance" ;
+  rdfs:comment "Links an element to metadata about how it was detected or extracted." .
+
+rdoc:confidence a rdf:Property ;
+  rdfs:domain rdoc:DocumentElement ;
+  rdfs:range xsd:float ;
+  rdfs:label "confidence" ;
+  rdfs:comment "ML model confidence score (0.0 to 1.0) for this element's detection." .
+
+rdoc:detectedBy a rdf:Property ;
+  rdfs:domain rdoc:DocumentElement ;
+  rdfs:range xsd:string ;
+  rdfs:label "detected by" ;
+  rdfs:comment "The name of the model or backend that produced this element (e.g., 'layout-model-v1', 'markdown-backend')." .
+
+rdoc:modelName a rdf:Property ;
+  rdfs:domain rdoc:Provenance ;
+  rdfs:range xsd:string ;
+  rdfs:label "model name" ;
+  rdfs:comment "The name of the ML model used for detection." .
+
+rdoc:modelVersion a rdf:Property ;
+  rdfs:domain rdoc:Provenance ;
+  rdfs:range xsd:string ;
+  rdfs:label "model version" ;
+  rdfs:comment "The version string of the ML model used for detection." .
+
+rdoc:processingDate a rdf:Property ;
+  rdfs:domain rdoc:Provenance ;
+  rdfs:range xsd:dateTime ;
+  rdfs:label "processing date" ;
+  rdfs:comment "The date and time when this element was processed." .
+
+# =============================================================================
+# Properties -- Cross-references
+# =============================================================================
+
+rdoc:refersTo a rdf:Property ;
+  rdfs:domain rdoc:DocumentElement ;
+  rdfs:range rdoc:DocumentElement ;
+  rdfs:label "refers to" ;
+  rdfs:comment "A cross-reference from one element to another (e.g., a citation pointing to a reference, a figure reference pointing to a picture)." .
+
+rdoc:labelId a rdf:Property ;
+  rdfs:domain rdoc:DocumentElement ;
+  rdfs:range xsd:string ;
+  rdfs:label "label identifier" ;
+  rdfs:comment "A document-scoped identifier for cross-referencing (e.g., a LaTeX \\label, an HTML id attribute)." .
+
+rdoc:citationKey a rdf:Property ;
+  rdfs:domain rdoc:Reference ;
+  rdfs:range xsd:string ;
+  rdfs:label "citation key" ;
+  rdfs:comment "The citation key used to reference this bibliographic entry (e.g., 'smith2024', '[1]')." .
+
+# =============================================================================
+# Schema.org bridge -- explicit equivalences for JSON-LD export
+# =============================================================================
+#
+# These mappings enable RuddyDoc documents to be exported as schema.org-
+# compatible JSON-LD. The JSON-LD exporter uses these to select the correct
+# schema.org types and properties.
+#
+# rdoc:Document           rdfs:subClassOf  schema:CreativeWork  (declared above)
+# dcterms:title           owl:equivalentProperty  schema:name
+# dcterms:creator         owl:equivalentProperty  schema:author
+# dcterms:date            owl:equivalentProperty  schema:datePublished
+# rdoc:language           owl:equivalentProperty  schema:inLanguage
+# rdoc:pageCount          owl:equivalentProperty  schema:numberOfPages
+# rdoc:fileName           owl:equivalentProperty  schema:name  (contextual)
+# rdoc:PictureElement     rdfs:subClassOf  schema:ImageObject
+# rdoc:TableElement       rdfs:subClassOf  schema:Table
+# rdoc:Code               rdfs:subClassOf  schema:SoftwareSourceCode
+
+dcterms:title owl:equivalentProperty schema:name .
+dcterms:creator owl:equivalentProperty schema:author .
+dcterms:date owl:equivalentProperty schema:datePublished .
+rdoc:language owl:equivalentProperty schema:inLanguage .
+rdoc:pageCount owl:equivalentProperty schema:numberOfPages .
+rdoc:PictureElement rdfs:subClassOf schema:ImageObject .
+rdoc:TableElement rdfs:subClassOf schema:Table .
+rdoc:Code rdfs:subClassOf schema:SoftwareSourceCode .
+
+# =============================================================================
+# End of RuddyDoc Document Ontology
+# =============================================================================

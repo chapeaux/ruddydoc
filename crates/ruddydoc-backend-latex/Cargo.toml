@@ -1,0 +1,16 @@
+[package]
+name = "ruddydoc-backend-latex"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "LaTeX parser backend for RuddyDoc"
+
+[dependencies]
+ruddydoc-core = { workspace = true }
+ruddydoc-graph = { workspace = true }
+ruddydoc-ontology = { workspace = true }
+sha2 = "0.10"
+
+[dev-dependencies]
+serde_json = { workspace = true }

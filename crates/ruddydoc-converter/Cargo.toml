@@ -1,0 +1,32 @@
+[package]
+name = "ruddydoc-converter"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Format detection and backend dispatch for RuddyDoc"
+
+[dependencies]
+ruddydoc-core = { workspace = true }
+ruddydoc-graph = { workspace = true }
+ruddydoc-ontology = { workspace = true }
+ruddydoc-pipeline = { workspace = true }
+ruddydoc-backend-md = { workspace = true }
+ruddydoc-backend-html = { workspace = true }
+ruddydoc-backend-csv = { workspace = true }
+ruddydoc-backend-docx = { workspace = true }
+ruddydoc-backend-pdf = { workspace = true }
+ruddydoc-backend-latex = { workspace = true }
+ruddydoc-backend-pptx = { workspace = true }
+ruddydoc-backend-xlsx = { workspace = true }
+ruddydoc-backend-image = { workspace = true }
+ruddydoc-backend-xml = { workspace = true }
+ruddydoc-backend-webvtt = { workspace = true }
+ruddydoc-backend-asciidoc = { workspace = true }
+sha2 = "0.10"
+zip = { workspace = true }
+tracing = "0.1"
+
+[dev-dependencies]
+ruddydoc-export = { workspace = true }
+serde_json = { workspace = true }

@@ -1,0 +1,119 @@
+= RuddyDoc AsciiDoc Test Document
+RuddyDoc Test Suite
+v1.0, 2024-04-07
+
+This is the preamble paragraph that comes before the first section.
+It provides an overview of the document.
+
+== Introduction
+
+This is the introduction section with regular text.
+AsciiDoc uses simple markup for formatting.
+
+This is a second paragraph with *bold text*, _italic text_, and `monospace text`.
+
+== Lists
+
+=== Unordered Lists
+
+Here is an unordered list:
+
+* First item in the list
+* Second item with some *formatting*
+* Third item
+** Nested item one
+** Nested item two
+* Fourth item
+
+=== Ordered Lists
+
+And here is an ordered list:
+
+. Step one
+. Step two
+. Step three
+. Step four
+
+== Tables
+
+.Sample Data Table
+|===
+|Column A |Column B |Column C
+
+|Row 1, Col 1
+|Row 1, Col 2
+|Row 1, Col 3
+
+|Row 2, Col 1
+|Row 2, Col 2
+|Row 2, Col 3
+
+|Row 3, Col 1
+|Row 3, Col 2
+|Row 3, Col 3
+|===
+
+== Code Blocks
+
+Here is a source code block:
+
+[source,python]
+----
+def factorial(n):
+    if n <= 1:
+        return 1
+    return n * factorial(n-1)
+
+result = factorial(5)
+print(f"Factorial: {result}")
+----
+
+Another code block in Rust:
+
+[source,rust]
+----
+fn main() {
+    println!("Hello, RuddyDoc!");
+}
+----
+
+== Images
+
+image::images/architecture.png[Architecture Diagram,800,600]
+
+This paragraph references the image above.
+
+== Admonitions
+
+[NOTE]
+====
+This is a note admonition block.
+It draws attention to important information.
+====
+
+[WARNING]
+====
+This is a warning admonition.
+It alerts users to potential issues.
+====
+
+== Quotes
+
+[quote, Albert Einstein]
+____
+Imagination is more important than knowledge.
+Knowledge is limited. Imagination encircles the world.
+____
+
+=== Third-Level Heading
+
+This demonstrates a third-level heading.
+
+==== Fourth-Level Heading
+
+And this is a fourth-level heading.
+
+== Conclusion
+
+This concludes the AsciiDoc test document.
+All major structural elements have been demonstrated.

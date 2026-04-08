@@ -1,0 +1,560 @@
+# =============================================================================
+# RuddyDoc SHACL Validation Shapes
+# =============================================================================
+#
+# SHACL shapes for validating RuddyDoc document graphs. These shapes ensure
+# that documents stored in Oxigraph conform to the structural requirements
+# of the RuddyDoc ontology.
+#
+# Usage:
+#   The ruddydoc-ontology crate loads these shapes and validates document
+#   graphs after parsing. Violations produce human-readable error messages
+#   (never raw IRIs).
+#
+# =============================================================================
+
+@prefix rdoc:    <https://ruddydoc.chapeaux.io/ontology#> .
+@prefix rdf:     <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:    <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:     <http://www.w3.org/2001/XMLSchema#> .
+@prefix sh:      <http://www.w3.org/ns/shacl#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+
+# =============================================================================
+# DocumentShape -- validates rdoc:Document instances
+# =============================================================================
+
+rdoc:DocumentShape a sh:NodeShape ;
+  sh:targetClass rdoc:Document ;
+  rdfs:label "Document Shape" ;
+  rdfs:comment "Validates that a Document has the required properties: at least one element, a source format, and a document hash." ;
+
+  # Must have at least one element
+  sh:property [
+    sh:path rdoc:hasElement ;
+    sh:minCount 1 ;
+    sh:class rdoc:DocumentElement ;
+    sh:name "has element" ;
+    sh:message "A document must contain at least one element."
+  ] ;
+
+  # Must have a source format
+  sh:property [
+    sh:path rdoc:sourceFormat ;
+    sh:minCount 1 ;
+    sh:maxCount 1 ;
+    sh:datatype xsd:string ;
+    sh:name "source format" ;
+    sh:message "A document must specify its source format (e.g., 'pdf', 'docx', 'md')."
+  ] ;
+
+  # Must have a document hash
+  sh:property [
+    sh:path rdoc:documentHash ;
+    sh:minCount 1 ;
+    sh:maxCount 1 ;
+    sh:datatype xsd:string ;
+    sh:name "document hash" ;
+    sh:message "A document must have a content hash for identification."
+  ] ;
+
+  # Should have a title (warning, not error)
+  sh:property [
+    sh:path dcterms:title ;
+    sh:minCount 0 ;
+    sh:maxCount 1 ;
+    sh:datatype xsd:string ;
+    sh:name "title" ;
+    sh:description "Documents should have a title for identification."  ;
+    sh:severity sh:Warning
+  ] ;
+
+  # Optional file name
+  sh:property [
+    sh:path rdoc:fileName ;
+    sh:maxCount 1 ;
+    sh:datatype xsd:string ;
+    sh:name "file name"
+  ] ;
+
+  # Optional file size (must be non-negative)
+  sh:property [
+    sh:path rdoc:fileSize ;
+    sh:maxCount 1 ;
+    sh:datatype xsd:long ;
+    sh:minInclusive 0 ;
+    sh:name "file size" ;
+    sh:message "File size must be a non-negative integer (bytes)."
+  ] ;
+
+  # Optional page count (must be non-negative)
+  sh:property [
+    sh:path rdoc:pageCount ;
+    sh:maxCount 1 ;
+    sh:datatype xsd:integer ;
+    sh:minInclusive 0 ;
+    sh:name "page count" ;
+    sh:message "Page count must be a non-negative integer."
+  ] ;
+
+  # Optional language
+  sh:property [
+    sh:path rdoc:language ;
+    sh:maxCount 1 ;
+    sh:datatype xsd:string ;
+    sh:name "language"
+  ] .
+
+# =============================================================================
+# PageShape -- validates rdoc:Page instances
+# =============================================================================
+
+rdoc:PageShape a sh:NodeShape ;
+  sh:targetClass rdoc:Page ;
+  rdfs:label "Page Shape" ;
+  rdfs:comment "Validates that a Page has a positive page number." ;
+
+  # Must have a page number
+  sh:property [
+    sh:path rdoc:pageNumber ;
+    sh:minCount 1 ;
+    sh:maxCount 1 ;
+    sh:datatype xsd:positiveInteger ;
+    sh:minInclusive 1 ;
+    sh:name "page number" ;
+    sh:message "Every page must have a positive page number (1 or greater)."
+  ] ;
+
+  # Optional page width (must be positive)
+  sh:property [
+    sh:path rdoc:pageWidth ;
+    sh:maxCount 1 ;
+    sh:datatype xsd:float ;
+    sh:minExclusive 0.0 ;
+    sh:name "page width" ;
+    sh:message "Page width must be a positive number (in points)."
+  ] ;
+
+  # Optional page height (must be positive)
+  sh:property [
+    sh:path rdoc:pageHeight ;
+    sh:maxCount 1 ;
+    sh:datatype xsd:float ;
+    sh:minExclusive 0.0 ;
+    sh:name "page height" ;
+    sh:message "Page height must be a positive number (in points)."
+  ] .
+
+# =============================================================================
+# TextElementShape -- validates rdoc:TextElement instances
+# =============================================================================
+
+rdoc:TextElementShape a sh:NodeShape ;
+  sh:targetClass rdoc:TextElement ;
+  rdfs:label "Text Element Shape" ;
+  rdfs:comment "Validates that a TextElement has text content and a reading order." ;
+
+  # Must have text content
+  sh:property [
+    sh:path rdoc:textContent ;
+    sh:minCount 1 ;
+    sh:maxCount 1 ;
+    sh:datatype xsd:string ;
+    sh:name "text content" ;
+    sh:message "Every text element must have text content."
+  ] ;
+
+  # Must have a reading order position
+  sh:property [
+    sh:path rdoc:readingOrder ;
+    sh:minCount 1 ;
+    sh:maxCount 1 ;
+    sh:datatype xsd:nonNegativeInteger ;
+    sh:minInclusive 0 ;
+    sh:name "reading order" ;
+    sh:message "Every text element must have a reading order position (0 or greater)."
+  ] .
+
+# =============================================================================
+# SectionHeaderShape -- validates rdoc:SectionHeader instances
+# =============================================================================
+
+rdoc:SectionHeaderShape a sh:NodeShape ;
+  sh:targetClass rdoc:SectionHeader ;
+  rdfs:label "Section Header Shape" ;
+  rdfs:comment "Validates that a SectionHeader has a heading level between 1 and 6." ;
+
+  # Must have a heading level
+  sh:property [
+    sh:path rdoc:headingLevel ;
+    sh:minCount 1 ;
+    sh:maxCount 1 ;
+    sh:datatype xsd:integer ;
+    sh:minInclusive 1 ;
+    sh:maxInclusive 6 ;
+    sh:name "heading level" ;
+    sh:message "A section header must have a heading level between 1 and 6."
+  ] .
+
+# =============================================================================
+# TableElementShape -- validates rdoc:TableElement instances
+# =============================================================================
+
+rdoc:TableElementShape a sh:NodeShape ;
+  sh:targetClass rdoc:TableElement ;
+  rdfs:label "Table Shape" ;
+  rdfs:comment "Validates that a Table has at least one cell." ;
+
+  # Must have at least one cell
+  sh:property [
+    sh:path rdoc:hasCell ;
+    sh:minCount 1 ;
+    sh:class rdoc:TableCell ;
+    sh:name "has cell" ;
+    sh:message "A table must contain at least one cell."
+  ] ;
+
+  # Must have a reading order
+  sh:property [
+    sh:path rdoc:readingOrder ;
+    sh:minCount 1 ;
+    sh:maxCount 1 ;
+    sh:datatype xsd:nonNegativeInteger ;
+    sh:minInclusive 0 ;
+    sh:name "reading order" ;
+    sh:message "A table must have a reading order position."
+  ] ;
+
+  # Optional row count
+  sh:property [
+    sh:path rdoc:rowCount ;
+    sh:maxCount 1 ;
+    sh:datatype xsd:nonNegativeInteger ;
+    sh:minInclusive 0 ;
+    sh:name "row count"
+  ] ;
+
+  # Optional column count
+  sh:property [
+    sh:path rdoc:columnCount ;
+    sh:maxCount 1 ;
+    sh:datatype xsd:nonNegativeInteger ;
+    sh:minInclusive 0 ;
+    sh:name "column count"
+  ] .
+
+# =============================================================================
+# TableCellShape -- validates rdoc:TableCell instances
+# =============================================================================
+
+rdoc:TableCellShape a sh:NodeShape ;
+  sh:targetClass rdoc:TableCell ;
+  rdfs:label "Table Cell Shape" ;
+  rdfs:comment "Validates that a TableCell has row index, column index, and text." ;
+
+  # Must have a row index
+  sh:property [
+    sh:path rdoc:cellRow ;
+    sh:minCount 1 ;
+    sh:maxCount 1 ;
+    sh:datatype xsd:nonNegativeInteger ;
+    sh:minInclusive 0 ;
+    sh:name "row" ;
+    sh:message "A table cell must have a row index (0 or greater)."
+  ] ;
+
+  # Must have a column index
+  sh:property [
+    sh:path rdoc:cellColumn ;
+    sh:minCount 1 ;
+    sh:maxCount 1 ;
+    sh:datatype xsd:nonNegativeInteger ;
+    sh:minInclusive 0 ;
+    sh:name "column" ;
+    sh:message "A table cell must have a column index (0 or greater)."
+  ] ;
+
+  # Must have cell text
+  sh:property [
+    sh:path rdoc:cellText ;
+    sh:minCount 1 ;
+    sh:maxCount 1 ;
+    sh:datatype xsd:string ;
+    sh:name "cell text" ;
+    sh:message "A table cell must have text content (may be an empty string)."
+  ] ;
+
+  # Optional row span (must be positive)
+  sh:property [
+    sh:path rdoc:cellRowSpan ;
+    sh:maxCount 1 ;
+    sh:datatype xsd:positiveInteger ;
+    sh:minInclusive 1 ;
+    sh:name "row span" ;
+    sh:message "Row span must be a positive integer (1 or greater)."
+  ] ;
+
+  # Optional column span (must be positive)
+  sh:property [
+    sh:path rdoc:cellColSpan ;
+    sh:maxCount 1 ;
+    sh:datatype xsd:positiveInteger ;
+    sh:minInclusive 1 ;
+    sh:name "column span" ;
+    sh:message "Column span must be a positive integer (1 or greater)."
+  ] ;
+
+  # Optional header flag
+  sh:property [
+    sh:path rdoc:isHeader ;
+    sh:maxCount 1 ;
+    sh:datatype xsd:boolean ;
+    sh:name "is header cell"
+  ] .
+
+# =============================================================================
+# PictureElementShape -- validates rdoc:PictureElement instances
+# =============================================================================
+
+rdoc:PictureElementShape a sh:NodeShape ;
+  sh:targetClass rdoc:PictureElement ;
+  rdfs:label "Picture Shape" ;
+  rdfs:comment "Validates that a PictureElement has a format." ;
+
+  # Must have a picture format
+  sh:property [
+    sh:path rdoc:pictureFormat ;
+    sh:minCount 1 ;
+    sh:maxCount 1 ;
+    sh:datatype xsd:string ;
+    sh:name "picture format" ;
+    sh:message "A picture must specify its format (e.g., 'png', 'jpeg', 'svg')."
+  ] ;
+
+  # Must have a reading order
+  sh:property [
+    sh:path rdoc:readingOrder ;
+    sh:minCount 1 ;
+    sh:maxCount 1 ;
+    sh:datatype xsd:nonNegativeInteger ;
+    sh:minInclusive 0 ;
+    sh:name "reading order" ;
+    sh:message "A picture must have a reading order position."
+  ] ;
+
+  # Optional alt text (recommended)
+  sh:property [
+    sh:path rdoc:altText ;
+    sh:maxCount 1 ;
+    sh:datatype xsd:string ;
+    sh:name "alt text" ;
+    sh:description "Pictures should have alt text for accessibility." ;
+    sh:severity sh:Warning
+  ] ;
+
+  # Optional image width
+  sh:property [
+    sh:path rdoc:imageWidth ;
+    sh:maxCount 1 ;
+    sh:datatype xsd:nonNegativeInteger ;
+    sh:minInclusive 0 ;
+    sh:name "image width"
+  ] ;
+
+  # Optional image height
+  sh:property [
+    sh:path rdoc:imageHeight ;
+    sh:maxCount 1 ;
+    sh:datatype xsd:nonNegativeInteger ;
+    sh:minInclusive 0 ;
+    sh:name "image height"
+  ] .
+
+# =============================================================================
+# BoundingBoxShape -- validates rdoc:BoundingBox instances
+# =============================================================================
+
+rdoc:BoundingBoxShape a sh:NodeShape ;
+  sh:targetClass rdoc:BoundingBox ;
+  rdfs:label "Bounding Box Shape" ;
+  rdfs:comment "Validates that a BoundingBox has all four coordinates as non-negative floats." ;
+
+  # Must have left coordinate
+  sh:property [
+    sh:path rdoc:bboxLeft ;
+    sh:minCount 1 ;
+    sh:maxCount 1 ;
+    sh:datatype xsd:float ;
+    sh:minInclusive 0.0 ;
+    sh:name "left" ;
+    sh:message "A bounding box must have a left coordinate (non-negative)."
+  ] ;
+
+  # Must have top coordinate
+  sh:property [
+    sh:path rdoc:bboxTop ;
+    sh:minCount 1 ;
+    sh:maxCount 1 ;
+    sh:datatype xsd:float ;
+    sh:minInclusive 0.0 ;
+    sh:name "top" ;
+    sh:message "A bounding box must have a top coordinate (non-negative)."
+  ] ;
+
+  # Must have right coordinate
+  sh:property [
+    sh:path rdoc:bboxRight ;
+    sh:minCount 1 ;
+    sh:maxCount 1 ;
+    sh:datatype xsd:float ;
+    sh:minInclusive 0.0 ;
+    sh:name "right" ;
+    sh:message "A bounding box must have a right coordinate (non-negative)."
+  ] ;
+
+  # Must have bottom coordinate
+  sh:property [
+    sh:path rdoc:bboxBottom ;
+    sh:minCount 1 ;
+    sh:maxCount 1 ;
+    sh:datatype xsd:float ;
+    sh:minInclusive 0.0 ;
+    sh:name "bottom" ;
+    sh:message "A bounding box must have a bottom coordinate (non-negative)."
+  ] ;
+
+  # Optional page reference
+  sh:property [
+    sh:path rdoc:bboxPage ;
+    sh:maxCount 1 ;
+    sh:class rdoc:Page ;
+    sh:name "bounding box page"
+  ] .
+
+# =============================================================================
+# ProvenanceShape -- validates rdoc:Provenance instances
+# =============================================================================
+
+rdoc:ProvenanceShape a sh:NodeShape ;
+  sh:targetClass rdoc:Provenance ;
+  rdfs:label "Provenance Shape" ;
+  rdfs:comment "Validates that a Provenance record has at least a model name or processing date." ;
+
+  # Should have a model name
+  sh:property [
+    sh:path rdoc:modelName ;
+    sh:maxCount 1 ;
+    sh:datatype xsd:string ;
+    sh:name "model name" ;
+    sh:description "Provenance should identify the model or backend." ;
+    sh:severity sh:Warning
+  ] ;
+
+  # Optional model version
+  sh:property [
+    sh:path rdoc:modelVersion ;
+    sh:maxCount 1 ;
+    sh:datatype xsd:string ;
+    sh:name "model version"
+  ] ;
+
+  # Optional processing date
+  sh:property [
+    sh:path rdoc:processingDate ;
+    sh:maxCount 1 ;
+    sh:datatype xsd:dateTime ;
+    sh:name "processing date"
+  ] ;
+
+  # Optional confidence score
+  sh:property [
+    sh:path rdoc:confidence ;
+    sh:maxCount 1 ;
+    sh:datatype xsd:float ;
+    sh:minInclusive 0.0 ;
+    sh:maxInclusive 1.0 ;
+    sh:name "confidence" ;
+    sh:message "Confidence must be a float between 0.0 and 1.0."
+  ] .
+
+# =============================================================================
+# DocumentElementShape -- validates general element constraints
+# =============================================================================
+
+rdoc:DocumentElementShape a sh:NodeShape ;
+  sh:targetClass rdoc:DocumentElement ;
+  rdfs:label "Document Element Shape" ;
+  rdfs:comment "General constraints for all document elements." ;
+
+  # Optional confidence (must be 0.0-1.0)
+  sh:property [
+    sh:path rdoc:confidence ;
+    sh:maxCount 1 ;
+    sh:datatype xsd:float ;
+    sh:minInclusive 0.0 ;
+    sh:maxInclusive 1.0 ;
+    sh:name "confidence" ;
+    sh:message "Confidence must be a float between 0.0 and 1.0."
+  ] ;
+
+  # Optional detected-by
+  sh:property [
+    sh:path rdoc:detectedBy ;
+    sh:maxCount 1 ;
+    sh:datatype xsd:string ;
+    sh:name "detected by"
+  ] ;
+
+  # Optional bounding box
+  sh:property [
+    sh:path rdoc:hasBoundingBox ;
+    sh:class rdoc:BoundingBox ;
+    sh:name "has bounding box"
+  ] .
+
+# =============================================================================
+# HyperlinkShape -- validates rdoc:Hyperlink instances
+# =============================================================================
+
+rdoc:HyperlinkShape a sh:NodeShape ;
+  sh:targetClass rdoc:Hyperlink ;
+  rdfs:label "Hyperlink Shape" ;
+  rdfs:comment "Validates that a Hyperlink has a target URL." ;
+
+  sh:property [
+    sh:path rdoc:linkTarget ;
+    sh:minCount 1 ;
+    sh:maxCount 1 ;
+    sh:datatype xsd:anyURI ;
+    sh:name "link target" ;
+    sh:message "A hyperlink must have a target URL."
+  ] .
+
+# =============================================================================
+# KeyValueItemShape -- validates rdoc:KeyValueItem instances
+# =============================================================================
+
+rdoc:KeyValueItemShape a sh:NodeShape ;
+  sh:targetClass rdoc:KeyValueItem ;
+  rdfs:label "Key-Value Item Shape" ;
+  rdfs:comment "Validates that a KeyValueItem has a key name." ;
+
+  sh:property [
+    sh:path rdoc:keyName ;
+    sh:minCount 1 ;
+    sh:maxCount 1 ;
+    sh:datatype xsd:string ;
+    sh:name "key name" ;
+    sh:message "A key-value item must have a key name."
+  ] ;
+
+  sh:property [
+    sh:path rdoc:keyValue ;
+    sh:maxCount 1 ;
+    sh:datatype xsd:string ;
+    sh:name "key value"
+  ] .
+
+# =============================================================================
+# End of SHACL Shapes
+# =============================================================================

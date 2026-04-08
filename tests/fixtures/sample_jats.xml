@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE article PUBLIC "-//NLM//DTD JATS (Z39.96) Journal Archiving and Interchange DTD v1.3 20210610//EN" "JATS-archivearticle1-3.dtd">
+<article xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:mml="http://www.w3.org/1998/Math/MathML" article-type="research-article">
+  <front>
+    <journal-meta>
+      <journal-id journal-id-type="publisher">RuddyDoc Test Journal</journal-id>
+      <journal-title-group>
+        <journal-title>Journal of Document Processing</journal-title>
+      </journal-title-group>
+    </journal-meta>
+    <article-meta>
+      <article-id pub-id-type="doi">10.1234/ruddydoc.2024.001</article-id>
+      <title-group>
+        <article-title>Semantic Document Parsing Using RDF Knowledge Graphs</article-title>
+      </title-group>
+      <contrib-group>
+        <contrib contrib-type="author">
+          <name>
+            <surname>Smith</surname>
+            <given-names>John</given-names>
+          </name>
+          <aff>Department of Computer Science, Example University</aff>
+        </contrib>
+        <contrib contrib-type="author">
+          <name>
+            <surname>Johnson</surname>
+            <given-names>Alice</given-names>
+          </name>
+          <aff>Institute for Document Research</aff>
+        </contrib>
+      </contrib-group>
+      <pub-date pub-type="epub">
+        <year>2024</year>
+        <month>04</month>
+        <day>07</day>
+      </pub-date>
+      <abstract>
+        <p>This paper presents a novel approach to document parsing using RDF knowledge graphs. We demonstrate how structured semantic representations enable more powerful querying and analysis of document collections.</p>
+      </abstract>
+      <kwd-group>
+        <kwd>document parsing</kwd>
+        <kwd>RDF</kwd>
+        <kwd>knowledge graphs</kwd>
+        <kwd>SPARQL</kwd>
+      </kwd-group>
+    </article-meta>
+  </front>
+  <body>
+    <sec id="s1">
+      <title>Introduction</title>
+      <p>Document parsing systems traditionally convert documents to proprietary data structures. We propose a different approach based on W3C standards.</p>
+      <p>Our system, RuddyDoc, parses documents into an RDF knowledge graph stored in an embedded Oxigraph datastore.</p>
+    </sec>
+    <sec id="s2">
+      <title>Methods</title>
+      <p>We implemented backend parsers for multiple document formats including PDF, DOCX, HTML, Markdown, and LaTeX.</p>
+      <sec id="s2-1">
+        <title>Ontology Design</title>
+        <p>The document ontology defines classes such as <italic>Paragraph</italic>, <italic>SectionHeader</italic>, <italic>TableElement</italic>, and <italic>PictureElement</italic>.</p>
+      </sec>
+      <sec id="s2-2">
+        <title>Test Data</title>
+        <p>We evaluated the system on a corpus of 1,000 scientific papers. Table 1 shows the results.</p>
+        <table-wrap id="t1">
+          <label>Table 1</label>
+          <caption>
+            <p>Performance metrics across document formats</p>
+          </caption>
+          <table>
+            <thead>
+              <tr>
+                <th>Format</th>
+                <th>Parsing Speed (docs/sec)</th>
+                <th>Accuracy</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>PDF</td>
+                <td>12.5</td>
+                <td>94.2%</td>
+              </tr>
+              <tr>
+                <td>DOCX</td>
+                <td>45.8</td>
+                <td>97.1%</td>
+              </tr>
+              <tr>
+                <td>HTML</td>
+                <td>152.3</td>
+                <td>98.5%</td>
+              </tr>
+            </tbody>
+          </table>
+        </table-wrap>
+      </sec>
+    </sec>
+    <sec id="s3">
+      <title>Results</title>
+      <p>The RDF-based approach enables complex SPARQL queries across document collections. Performance improved by 10x compared to traditional approaches.</p>
+      <fig id="f1">
+        <label>Figure 1</label>
+        <caption>
+          <p>Query performance comparison showing RuddyDoc versus baseline systems.</p>
+        </caption>
+        <graphic xlink:href="figure1.png"/>
+      </fig>
+    </sec>
+    <sec id="s4">
+      <title>Discussion</title>
+      <p>Our results demonstrate that RDF-based document representations offer significant advantages for semantic search and analysis.</p>
+      <p>Future work will explore integration with machine learning models for layout analysis and table structure recognition.</p>
+    </sec>
+  </body>
+  <back>
+    <ref-list>
+      <title>References</title>
+      <ref id="r1">
+        <element-citation publication-type="journal">
+          <person-group person-group-type="author">
+            <name>
+              <surname>Brown</surname>
+              <given-names>P</given-names>
+            </name>
+          </person-group>
+          <article-title>Document parsing foundations</article-title>
+          <source>Journal of Computing</source>
+          <year>2020</year>
+          <volume>45</volume>
+          <fpage>123</fpage>
+          <lpage>145</lpage>
+        </element-citation>
+      </ref>
+    </ref-list>
+  </back>
+</article>

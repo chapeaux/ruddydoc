@@ -1,0 +1,119 @@
+\documentclass{article}
+\usepackage{amsmath}
+\usepackage{graphicx}
+
+\title{RuddyDoc LaTeX Test Document}
+\author{RuddyDoc Test Suite}
+\date{April 2024}
+
+\begin{document}
+
+\maketitle
+
+\section{Introduction}
+
+This is the introduction section with regular text. It demonstrates basic paragraph parsing in \LaTeX{} documents.
+
+This is a second paragraph with \textbf{bold text}, \emph{emphasized text}, and \texttt{monospace text}.
+
+\section{Lists and Structure}
+
+\subsection{Unordered Lists}
+
+Here is an unordered list:
+
+\begin{itemize}
+    \item First item in the list
+    \item Second item with some \textbf{formatting}
+    \item Third item
+\end{itemize}
+
+\subsection{Ordered Lists}
+
+And here is an ordered list:
+
+\begin{enumerate}
+    \item Step one
+    \item Step two
+    \item Step three
+\end{enumerate}
+
+\subsection{Nested Lists}
+
+\begin{itemize}
+    \item Outer item one
+    \begin{itemize}
+        \item Inner item one
+        \item Inner item two
+    \end{itemize}
+    \item Outer item two
+\end{itemize}
+
+\section{Tables}
+
+\begin{table}[h]
+\centering
+\begin{tabular}{|l|c|r|}
+\hline
+\textbf{Column A} & \textbf{Column B} & \textbf{Column C} \\
+\hline
+Left aligned & Centered & Right aligned \\
+Row 2, Col 1 & Row 2, Col 2 & Row 2, Col 3 \\
+Row 3, Col 1 & Row 3, Col 2 & Row 3, Col 3 \\
+\hline
+\end{tabular}
+\caption{A sample table with three columns}
+\label{tab:sample}
+\end{table}
+
+\section{Mathematics}
+
+Inline math: The quadratic formula is $x = \frac{-b \pm \sqrt{b^2-4ac}}{2a}$.
+
+Display math:
+\begin{equation}
+E = mc^2
+\label{eq:einstein}
+\end{equation}
+
+As shown in equation~\ref{eq:einstein}, energy and mass are related.
+
+\section{Figures}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.5\textwidth]{images/plot.png}
+\caption{A sample plot showing data trends}
+\label{fig:plot}
+\end{figure}
+
+Figure~\ref{fig:plot} shows the data visualization.
+
+\section{Code Blocks}
+
+Here is a verbatim code block:
+
+\begin{verbatim}
+def factorial(n):
+    if n <= 1:
+        return 1
+    return n * factorial(n-1)
+\end{verbatim}
+
+\section{Footnotes and References}
+
+This text has a footnote\footnote{This is the footnote text explaining something.} that provides additional context.
+
+We can reference Table~\ref{tab:sample} and Figure~\ref{fig:plot} using labels.
+
+% This is a comment and should not appear in the parsed output
+
+\subsubsection{A Third-Level Heading}
+
+This demonstrates a third-level heading structure.
+
+\section{Conclusion}
+
+This concludes the LaTeX test document with all major structural elements covered.
+
+\end{document}

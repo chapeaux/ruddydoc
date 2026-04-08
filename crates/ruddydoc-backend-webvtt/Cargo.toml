@@ -1,0 +1,16 @@
+[package]
+name = "ruddydoc-backend-webvtt"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "WebVTT subtitle parser backend for RuddyDoc"
+
+[dependencies]
+ruddydoc-core = { workspace = true }
+ruddydoc-ontology = { workspace = true }
+sha2 = "0.10"
+
+[dev-dependencies]
+ruddydoc-graph = { workspace = true }
+serde_json = { workspace = true }

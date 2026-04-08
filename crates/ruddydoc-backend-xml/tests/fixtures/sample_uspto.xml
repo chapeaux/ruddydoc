@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<us-patent-grant lang="EN" dtd-version="v4.5 2014-04-03"
+                  file="US12345678-20240315.XML"
+                  status="PRODUCTION"
+                  id="us-patent-grant"
+                  country="US"
+                  date-produced="20240315"
+                  date-publ="20240315">
+  <us-bibliographic-data-grant>
+    <publication-reference>
+      <document-id>
+        <country>US</country>
+        <doc-number>12,345,678</doc-number>
+        <kind>B2</kind>
+        <date>20240315</date>
+      </document-id>
+    </publication-reference>
+    <application-reference appl-type="utility">
+      <document-id>
+        <country>US</country>
+        <doc-number>17/123,456</doc-number>
+        <date>20220601</date>
+      </document-id>
+    </application-reference>
+    <invention-title>Self-Adjusting Widget Assembly With Integrated Feedback Control</invention-title>
+    <us-parties>
+      <inventors>
+        <inventor>
+          <addressbook>
+            <last-name>Johnson</last-name>
+            <first-name>Alice M.</first-name>
+            <city>San Francisco</city>
+            <state>CA</state>
+            <country>US</country>
+          </addressbook>
+        </inventor>
+        <inventor>
+          <addressbook>
+            <last-name>Williams</last-name>
+            <first-name>Robert K.</first-name>
+            <city>Portland</city>
+            <state>OR</state>
+            <country>US</country>
+          </addressbook>
+        </inventor>
+      </inventors>
+      <applicants>
+        <applicant>
+          <addressbook>
+            <orgname>Widget Technologies Inc.</orgname>
+            <city>San Francisco</city>
+            <state>CA</state>
+            <country>US</country>
+          </addressbook>
+        </applicant>
+      </applicants>
+    </us-parties>
+    <us-field-of-classification-search>
+      <classification-national>
+        <country>US</country>
+        <main-classification>700/245</main-classification>
+      </classification-national>
+    </us-field-of-classification-search>
+  </us-bibliographic-data-grant>
+  <abstract>
+    <p>A self-adjusting widget assembly includes a housing defining an
+    interior cavity, a widget mechanism disposed within the cavity, and
+    a feedback control system. The feedback control system monitors
+    operating parameters in real-time and automatically adjusts the
+    widget mechanism to maintain optimal performance.</p>
+  </abstract>
+  <description>
+    <heading level="1">FIELD OF THE INVENTION</heading>
+    <p>The present invention relates generally to widget assemblies, and
+    more particularly to a self-adjusting widget assembly with integrated
+    feedback control for maintaining optimal operating conditions.</p>
+    <heading level="1">BACKGROUND OF THE INVENTION</heading>
+    <p>Traditional widget assemblies require manual adjustment to maintain
+    proper alignment and operating parameters. This manual process is
+    time-consuming and prone to human error.</p>
+    <p>There remains a need for a widget assembly that can automatically
+    detect and correct deviations from optimal operating conditions.</p>
+    <heading level="1">DETAILED DESCRIPTION</heading>
+    <p>Referring now to the drawings, FIG. 1 shows a perspective view
+    of the self-adjusting widget assembly 100 according to a preferred
+    embodiment of the present invention.</p>
+    <p>The widget assembly 100 includes a housing 110, a widget mechanism
+    120, and a feedback control system 130.</p>
+    <table>
+      <thead>
+        <tr>
+          <th>Component</th>
+          <th>Part Number</th>
+          <th>Material</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Housing</td>
+          <td>WA-110</td>
+          <td>Aluminum 6061-T6</td>
+        </tr>
+        <tr>
+          <td>Widget Mechanism</td>
+          <td>WA-120</td>
+          <td>Stainless Steel 316</td>
+        </tr>
+        <tr>
+          <td>Control Board</td>
+          <td>WA-130</td>
+          <td>FR-4 PCB</td>
+        </tr>
+      </tbody>
+    </table>
+  </description>
+  <claims>
+    <claim id="CLM-00001" num="1">
+      <claim-text>What is claimed is:
+        <claim-text>1. A self-adjusting widget assembly comprising:</claim-text>
+        <claim-text>a housing defining an interior cavity;</claim-text>
+        <claim-text>a widget mechanism disposed within the interior cavity;</claim-text>
+        <claim-text>a feedback control system operatively connected to the widget mechanism.</claim-text>
+      </claim-text>
+    </claim>
+    <claim id="CLM-00002" num="2">
+      <claim-text>2. The widget assembly of claim 1, wherein the feedback
+      control system includes at least one sensor.</claim-text>
+    </claim>
+  </claims>
+</us-patent-grant>

@@ -1,0 +1,23 @@
+[package]
+name = "ruddydoc-backend-pdf"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "PDF parser backend for RuddyDoc"
+
+[features]
+default = []
+pdfium = ["dep:pdfium-render"]
+
+[dependencies]
+ruddydoc-core = { workspace = true }
+ruddydoc-ontology = { workspace = true }
+lopdf = { workspace = true }
+sha2 = "0.10"
+serde = { workspace = true }
+pdfium-render = { version = "0.8", optional = true }
+
+[dev-dependencies]
+ruddydoc-graph = { workspace = true }
+serde_json = { workspace = true }

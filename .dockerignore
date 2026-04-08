@@ -1,0 +1,42 @@
+# Build artifacts
+target/
+**/*.rs.bk
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Documentation
+*.md
+!README.md
+docs/
+docling/
+
+# CI/CD
+.github/
+.claude/
+.actor/
+
+# Tests and benchmarks
+tests/
+benches/
+
+# Team and planning
+team/
+
+# Python docling (not needed in Rust image)
+*.py
+*.pyc
+__pycache__/
+venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db

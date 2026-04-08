@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="A comprehensive HTML test fixture for RuddyDoc">
+    <meta name="author" content="RuddyDoc Test Suite">
+    <title>RuddyDoc HTML Test Document</title>
+</head>
+<body>
+    <header>
+        <h1>RuddyDoc HTML Test Document</h1>
+        <p>This document exercises all key HTML structural elements.</p>
+    </header>
+
+    <main>
+        <article>
+            <h2>Introduction</h2>
+            <p>This is the first paragraph of the introduction section. It contains regular text to test basic paragraph parsing.</p>
+            <p>This is the second paragraph with <strong>bold text</strong>, <em>italic text</em>, and a <a href="https://example.com">hyperlink</a>.</p>
+
+            <h2>Lists</h2>
+
+            <h3>Unordered List</h3>
+            <ul>
+                <li>First item</li>
+                <li>Second item with <code>inline code</code></li>
+                <li>Third item</li>
+            </ul>
+
+            <h3>Ordered List</h3>
+            <ol>
+                <li>Step one</li>
+                <li>Step two</li>
+                <li>Step three</li>
+                <li>Step four</li>
+            </ol>
+
+            <h2>Tables</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Header 1</th>
+                        <th>Header 2</th>
+                        <th>Header 3</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Row 1, Col 1</td>
+                        <td>Row 1, Col 2</td>
+                        <td rowspan="2">Spans two rows</td>
+                    </tr>
+                    <tr>
+                        <td colspan="2">Spans two columns</td>
+                    </tr>
+                    <tr>
+                        <td>Row 3, Col 1</td>
+                        <td>Row 3, Col 2</td>
+                        <td>Row 3, Col 3</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h2>Code and Quotes</h2>
+            <pre><code>function example() {
+    console.log("This is a code block");
+    return 42;
+}</code></pre>
+
+            <blockquote>
+                <p>This is a blockquote. It represents quoted material from another source.</p>
+                <p>It can contain multiple paragraphs.</p>
+            </blockquote>
+
+            <h2>Images and Figures</h2>
+            <figure>
+                <img src="images/diagram.png" alt="A sample diagram showing document structure">
+                <figcaption>Figure 1: Document structure visualization</figcaption>
+            </figure>
+
+            <p>This paragraph contains an inline image: <img src="icons/star.svg" alt="star icon">.</p>
+        </article>
+    </main>
+
+    <footer>
+        <p>Copyright 2024 RuddyDoc Project. All rights reserved.</p>
+    </footer>
+</body>
+</html>

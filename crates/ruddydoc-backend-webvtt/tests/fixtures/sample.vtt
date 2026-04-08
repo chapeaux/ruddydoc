@@ -1,0 +1,19 @@
+WEBVTT
+
+intro
+00:00:01.000 --> 00:00:05.000
+Hello, welcome to the presentation.
+
+00:00:05.500 --> 00:00:10.000
+Today we'll discuss RuddyDoc.
+
+NOTE
+This is a comment that should be skipped.
+
+chapter1
+00:00:10.500 --> 00:00:15.000
+Let's get started with
+the first chapter.
+
+00:00:15.500 --> 00:00:20.000
+<b>Important</b> information here.

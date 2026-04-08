@@ -1,0 +1,35 @@
+WEBVTT
+
+NOTE This is a sample WebVTT file for RuddyDoc testing.
+
+intro
+00:00:00.000 --> 00:00:05.000
+Welcome to RuddyDoc.
+This is a multi-line cue.
+
+00:00:05.500 --> 00:00:10.000
+RuddyDoc is a document parsing system
+built on RDF and W3C standards.
+
+section-overview
+00:00:10.500 --> 00:00:15.000
+It supports multiple input formats:
+Markdown, HTML, PDF, and more.
+
+00:00:15.500 --> 00:00:20.000
+The parsed documents become queryable
+knowledge graphs.
+
+00:00:21.000 --> 00:00:26.000
+SPARQL queries enable semantic search
+across document collections.
+
+NOTE Demonstrates a NOTE block which is a comment.
+
+00:00:27.000 --> 00:00:32.000
+Export formats include Markdown, HTML,
+JSON, and RDF serializations.
+
+conclusion
+00:00:33.000 --> 00:00:38.000
+Thank you for using RuddyDoc.

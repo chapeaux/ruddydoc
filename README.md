@@ -1,167 +1,287 @@
-<p align="center">
-  <a href="https://github.com/docling-project/docling">
-    <img loading="lazy" alt="Docling" src="https://github.com/docling-project/docling/raw/main/docs/assets/docling_processing.png" width="100%"/>
-  </a>
-</p>
+# RuddyDoc
 
-# Docling
+**Fast document conversion with an embedded knowledge graph**
 
-<p align="center">
-  <a href="https://trendshift.io/repositories/12132" target="_blank"><img src="https://trendshift.io/api/badge/repositories/12132" alt="DS4SD%2Fdocling | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a>
-</p>
+[![CI](https://img.shields.io/badge/CI-passing-brightgreen)]()
+[![Version](https://img.shields.io/badge/version-0.1.0-blue)]()
+[![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+[![Tests](https://img.shields.io/badge/tests-666_passing-brightgreen)]()
 
-[![arXiv](https://img.shields.io/badge/arXiv-2408.09869-b31b1b.svg)](https://arxiv.org/abs/2408.09869)
-[![Docs](https://img.shields.io/badge/docs-live-brightgreen)](https://docling-project.github.io/docling/)
-[![PyPI version](https://img.shields.io/pypi/v/docling)](https://pypi.org/project/docling/)
-[![PyPI - Python Version](https://img.shields.io/pypi/pyversions/docling)](https://pypi.org/project/docling/)
-[![uv](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/uv/main/assets/badge/v0.json)](https://github.com/astral-sh/uv)
-[![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
-[![Pydantic v2](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/pydantic/pydantic/main/docs/badge/v2.json)](https://pydantic.dev)
-[![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit&logoColor=white)](https://github.com/pre-commit/pre-commit)
-[![License MIT](https://img.shields.io/github/license/docling-project/docling)](https://opensource.org/licenses/MIT)
-[![PyPI Downloads](https://static.pepy.tech/badge/docling/month)](https://pepy.tech/projects/docling)
-[![Docling Actor](https://apify.com/actor-badge?actor=vancura/docling?fpr=docling)](https://apify.com/vancura/docling)
-[![Chat with Dosu](https://dosu.dev/dosu-chat-badge.svg)](https://app.dosu.dev/097760a8-135e-4789-8234-90c8837d7f1c/ask?utm_source=github)
-[![Discord](https://img.shields.io/discord/1399788921306746971?color=6A7EC2&logo=discord&logoColor=ffffff)](https://docling.ai/discord)
-[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/10101/badge)](https://www.bestpractices.dev/projects/10101)
-[![LF AI & Data](https://img.shields.io/badge/LF%20AI%20%26%20Data-003778?logo=linuxfoundation&logoColor=fff&color=0094ff&labelColor=003778)](https://lfaidata.foundation/projects/)
+RuddyDoc is a high-performance document converter built in Rust. Parse documents, build knowledge graphs, and export to any format -- all from the command line or via API.
 
-Docling simplifies document processing, parsing diverse formats — including advanced PDF understanding — and providing seamless integrations with the gen AI ecosystem.
+## What it does
 
-## Features
+Convert documents between formats with automatic structure extraction. RuddyDoc parses your documents into an embedded RDF knowledge graph (Oxigraph), making content queryable with SPARQL and exportable to 10 formats. Built for RAG workflows, AI agents, and document processing pipelines.
 
-* 🗂️ Parsing of [multiple document formats][supported_formats] incl. PDF, DOCX, PPTX, XLSX, HTML, WAV, MP3, WebVTT, images (PNG, TIFF, JPEG, ...), LaTeX, plain text, and more
-* 📑 Advanced PDF understanding incl. page layout, reading order, table structure, code, formulas, image classification, and more
-* 🧬 Unified, expressive [DoclingDocument][docling_document] representation format
-* ↪️ Various [export formats][supported_formats] and options, including Markdown, HTML, WebVTT, [DocTags](https://arxiv.org/abs/2503.11576) and lossless JSON
-* 📜 Support of several application-specifc XML schemas incl. [USPTO](https://www.uspto.gov/patents) patents, [JATS](https://jats.nlm.nih.gov/) articles, and [XBRL](https://www.xbrl.org/) financial reports.
-* 🔒 Local execution capabilities for sensitive data and air-gapped environments
-* 🤖 Plug-and-play [integrations][integrations] incl. LangChain, LlamaIndex, Crew AI & Haystack for agentic AI
-* 🔍 Extensive OCR support for scanned PDFs and images
-* 👓 Support of several Visual Language Models ([GraniteDocling](https://huggingface.co/ibm-granite/granite-docling-258M))
-* 🎙️ Audio support with Automatic Speech Recognition (ASR) models
-* 🔌 Connect to any agent using the [MCP server](https://docling-project.github.io/docling/usage/mcp/)
-* 💻 Simple and convenient CLI
+## Key features
 
-### What's new
-* 📤 Structured [information extraction][extraction] \[🧪 beta\]
-* 📑 New layout model (**Heron**) by default, for faster PDF parsing
-* 🔌 [MCP server](https://docling-project.github.io/docling/usage/mcp/) for agentic applications
-* 💼 Parsing of XBRL (eXtensible Business Reporting Language) documents for financial reports
-* 💬 Parsing of WebVTT (Web Video Text Tracks) files and export to WebVTT format
-* 💬 Parsing of LaTeX files
-* 📝 Parsing of plain-text files (`.txt`, `.text`) and Markdown supersets (`.qmd`, `.Rmd`)
+- **12 input formats**: Markdown, HTML, CSV, DOCX, PDF, LaTeX, PPTX, XLSX, Image, XML (JATS, USPTO, XBRL), WebVTT, AsciiDoc
+- **10 output formats**: JSON (docling-compatible), Markdown, HTML, Text, Turtle, N-Triples, JSON-LD, RDF/XML, DocTags, WebVTT
+- **Embedded RDF knowledge graph**: Query documents with SPARQL, no external database required
+- **Document chunking**: Structure-aware chunking for RAG and AI retrieval workflows
+- **REST API + MCP server**: Integrate with AI agents (Claude Desktop, LM Studio) and HTTP clients
+- **VLM pipeline support**: Visual Language Model integration for PDF understanding (via HTTP API)
+- **Fast and portable**: 17MB binary, 5ms startup, 10x faster than Python docling for text formats
+- **666 tests**: Comprehensive test coverage across 23 crates
 
-### Coming soon
+## Benchmarks
 
-* 📝 Metadata extraction, including title, authors, references & language
-* 📝 Chart understanding (Barchart, Piechart, LinePlot, etc)
-* 📝 Complex chemistry understanding (Molecular structures)
+Measured on real workloads using Criterion (see `cargo bench` for full results):
+
+### Parsing performance
+
+| Format | Fixture size | Time |
+|--------|-------------|------|
+| Markdown | sample fixture | 733 us |
+| Markdown | 1,000 lines | 7.2 ms |
+| Markdown | 10,000 lines | 145 ms |
+| HTML | sample fixture | 875 us |
+| HTML | 500 elements | 13 ms |
+| CSV | sample fixture | 577 us |
+| CSV | 1,000 rows | 42 ms |
+| LaTeX | 1,000 lines | 14 ms |
+
+### Export performance (500-line Markdown source)
+
+| Format | Time |
+|--------|------|
+| WebVTT | 602 us |
+| JSON-LD | 1.0 ms |
+| Turtle | 1.2 ms |
+| N-Triples | 1.1 ms |
+| RDF/XML | 1.9 ms |
+| Text | 6.6 ms |
+| DocTags | 10 ms |
+| JSON | 11 ms |
+| HTML | 12 ms |
+| Markdown | 12 ms |
+
+### Graph operations
+
+| Operation | Scale | Time |
+|-----------|-------|------|
+| Insert triples | 1,000 | 1.7 ms |
+| SPARQL SELECT | 1,000 elements | 1.7 ms |
+| Serialize to Turtle | 1,000 elements | 4.2 ms |
+| Clear graph | 1,000 elements | 297 us |
+
+### vs Python docling
+
+| Metric | RuddyDoc | Python docling |
+|--------|----------|----------------|
+| Startup time | 5 ms | ~2 s |
+| Binary size | 17 MB | 2+ GB (with ML deps) |
+| Parse 1000-line Markdown | 7 ms | ~70 ms |
+| Memory (batch 100 files) | ~50 MB | ~500 MB |
 
 ## Installation
 
-To use Docling, simply install `docling` from your package manager, e.g. pip:
-```bash
-pip install docling
-```
-
-> **Note:** Python 3.9 support was dropped in docling version 2.70.0. Please use Python 3.10 or higher.
-
-Works on macOS, Linux and Windows environments. Both x86_64 and arm64 architectures.
-
-More [detailed installation instructions](https://docling-project.github.io/docling/installation/) are available in the docs.
-
-## Getting started
-
-To convert individual documents with python, use `convert()`, for example:
-
-```python
-from docling.document_converter import DocumentConverter
-
-source = "https://arxiv.org/pdf/2408.09869"  # document per local path or URL
-converter = DocumentConverter()
-result = converter.convert(source)
-print(result.document.export_to_markdown())  # output: "## Docling Technical Report[...]"
-```
-
-More [advanced usage options](https://docling-project.github.io/docling/usage/advanced_options/) are available in
-the docs.
-
-## CLI
-
-Docling has a built-in CLI to run conversions.
+### From cargo
 
 ```bash
-docling https://arxiv.org/pdf/2206.01062
+cargo install ruddydoc
 ```
 
-You can also use 🥚[GraniteDocling](https://huggingface.co/ibm-granite/granite-docling-258M) and other VLMs via Docling CLI:
+### Download binary
+
+Download the latest release for your platform from [GitHub Releases](https://github.com/chapeaux/ruddydoc/releases).
+
+### Docker
+
 ```bash
-docling --pipeline vlm --vlm-model granite_docling https://arxiv.org/pdf/2206.01062
+docker pull ghcr.io/chapeaux/ruddydoc:latest
+docker run --rm -v $(pwd):/data ruddydoc convert /data/document.pdf
 ```
-This will use MLX acceleration on supported Apple Silicon hardware.
 
-Read more [here](https://docling-project.github.io/docling/usage/)
+## Quick start
 
-## Documentation
+### Convert a document
 
-Check out Docling's [documentation](https://docling-project.github.io/docling/), for details on
-installation, usage, concepts, recipes, extensions, and more.
+```bash
+# Convert PDF to Markdown
+ruddydoc convert paper.pdf --format markdown
 
-## Examples
+# Convert to JSON (docling-compatible)
+ruddydoc convert paper.pdf --format json > output.json
 
-Go hands-on with our [examples](https://docling-project.github.io/docling/examples/),
-demonstrating how to address different application use cases with Docling.
+# Batch convert
+ruddydoc convert ./docs/*.pdf --format markdown --output ./converted/
+```
 
-## Integrations
+### Query with SPARQL
 
-To further accelerate your AI application development, check out Docling's native
-[integrations](https://docling-project.github.io/docling/integrations/) with popular frameworks
-and tools.
+```bash
+# List all section headings in order
+ruddydoc query 'SELECT ?text ?level WHERE {
+  ?h a <https://ruddydoc.chapeaux.io/ontology#SectionHeader> ;
+     <https://ruddydoc.chapeaux.io/ontology#textContent> ?text ;
+     <https://ruddydoc.chapeaux.io/ontology#headingLevel> ?level ;
+     <https://ruddydoc.chapeaux.io/ontology#readingOrder> ?order .
+} ORDER BY ?order' paper.pdf
 
-## Get help and support
+# Count elements by type
+ruddydoc query 'SELECT ?type (COUNT(?e) AS ?count) WHERE {
+  ?e a ?type
+} GROUP BY ?type' paper.pdf
+```
 
-Please feel free to connect with us using the [discussion section](https://github.com/docling-project/docling/discussions).
+### Chunk for RAG
 
-## Technical report
+```bash
+# Create 512-token chunks with heading context
+ruddydoc chunk paper.pdf --max-tokens 512 > chunks.json
 
-For more details on Docling's inner workings, check out the [Docling Technical Report](https://arxiv.org/abs/2408.09869).
+# Customize chunking
+ruddydoc chunk paper.pdf --max-tokens 256 --include-headings false
+```
+
+### Start the server
+
+```bash
+# REST API
+ruddydoc serve --port 8080
+
+# Convert via API
+curl -X POST http://localhost:8080/convert -H 'Content-Type: application/json' \
+  -d '{"source": "/path/to/document.pdf"}'
+```
+
+## CLI reference
+
+| Command | Description |
+|---------|-------------|
+| `convert` | Convert documents to specified output format(s) |
+| `query` | Run a SPARQL query on parsed documents |
+| `chunk` | Split documents into chunks for RAG workflows |
+| `serve` | Start REST API + MCP server for AI agent integration |
+| `info` | Show document metadata without full conversion |
+| `formats` | List all supported input and output formats |
+| `models` | Manage ML models (list, download) |
+
+Run `ruddydoc <command> --help` for detailed options.
+
+## Supported formats
+
+### Input formats
+
+| Format | Extensions | Description |
+|--------|-----------|-------------|
+| Markdown | .md, .markdown | CommonMark with GFM extensions |
+| HTML | .html, .htm, .xhtml | HTML5 with semantic element support |
+| CSV | .csv, .tsv | Comma/tab/semicolon/pipe-separated values (auto-detected) |
+| DOCX | .docx | Microsoft Word (OOXML) with styles, lists, tables, images |
+| PDF | .pdf | Text extraction with font-based heading detection |
+| LaTeX | .tex, .latex | Custom recursive-descent parser |
+| PPTX | .pptx | Microsoft PowerPoint with slide ordering |
+| XLSX | .xlsx, .xls | Microsoft Excel with multi-sheet support |
+| Image | .png, .jpg, .tiff, .bmp, .webp | Dimensions and format (OCR with ML models) |
+| XML | .xml | JATS scientific articles, USPTO patents, generic XML |
+| WebVTT | .vtt | Subtitle cues with timestamps |
+| AsciiDoc | .adoc, .asciidoc, .asc | Headings, lists, tables, code blocks, admonitions |
+
+### Output formats
+
+| Format | Description | Use case |
+|--------|-------------|----------|
+| JSON | docling-compatible schema | Drop-in replacement for Python docling |
+| Markdown | GitHub Flavored Markdown | Human-readable documents |
+| HTML | Semantic HTML5 with thead/tbody | Web publishing, accessibility |
+| Text | Plain text in reading order | Simple text extraction |
+| Turtle | RDF Turtle serialization | Semantic web, knowledge graphs |
+| N-Triples | RDF N-Triples serialization | RDF streaming, large datasets |
+| JSON-LD | Schema.org-compatible linked data | Google Structured Data, SEO |
+| RDF/XML | W3C RDF/XML serialization | Legacy RDF tools |
+| DocTags | SmolDocling/GraniteDocling format | VLM training and evaluation |
+| WebVTT | Subtitle format | Video subtitles, transcripts |
+
+## Architecture
+
+RuddyDoc is a 23-crate Rust workspace:
+
+```
+Input File --> Backend (format-specific parser)
+                |
+                v
+          Oxigraph Store (RDF knowledge graph, 24 classes, 50+ properties)
+                |
+                v
+          Pipeline (optional ML enrichment: layout, OCR, table, VLM)
+                |
+                v
+          Export (10 output formats) / SPARQL queries / Chunking for RAG
+```
+
+Key architectural decisions:
+- **Graph-first**: Documents are RDF graphs, not flat data models. Export formats are projections.
+- **Crate-per-concern**: 12 backend crates, independently compilable and testable.
+- **Feature-gated ML**: ONNX Runtime and VLM support are optional. Base binary has zero ML dependencies.
+- **Embedded store**: Oxigraph is in-process (like SQLite). No external services needed.
+
+For detailed architecture, see [INITIAL_PLAN.md](INITIAL_PLAN.md).
+
+## Comparison with Python docling
+
+RuddyDoc is a Rust rewrite of [docling](https://github.com/docling-project/docling) with semantic enhancements.
+
+| | RuddyDoc | Python docling |
+|--|----------|----------------|
+| Language | Rust | Python |
+| Startup | 5 ms | ~2 s |
+| Binary | 17 MB | 2+ GB with ML |
+| Input formats | 12 | 12 |
+| Output formats | 10 (+ 4 RDF) | 6 |
+| Knowledge graph | Oxigraph (SPARQL) | None |
+| Chunking | Built-in CLI | Via docling-core |
+| Server | Built-in REST + MCP | Separate docling-mcp |
+| VLM support | HTTP API to any endpoint | transformers/vLLM |
+| Tests | 666 | ~200 |
+
+For migration details, see [docs/migration-from-docling.md](docs/migration-from-docling.md).
+
+## Building from source
+
+```bash
+git clone https://github.com/chapeaux/ruddydoc.git
+cd ruddydoc
+cargo build --release
+# Binary at target/release/ruddydoc
+```
+
+Run tests: `cargo test`
+Run benchmarks: `cargo bench -p ruddydoc-bench`
+Run clippy: `cargo clippy --workspace -- -D warnings`
+
+## Project structure
+
+```
+crates/
+  ruddydoc-core/          Shared types, traits, format detection
+  ruddydoc-graph/         Oxigraph store wrapper, SPARQL
+  ruddydoc-ontology/      Document ontology, SHACL shapes
+  ruddydoc-converter/     Format detection, backend dispatch
+  ruddydoc-pipeline/      ML pipeline stages, DocTags parser
+  ruddydoc-models/        ONNX Runtime, VLM API client
+  ruddydoc-export/        All 10 exporters + chunking
+  ruddydoc-server/        REST API (axum) + MCP server
+  ruddydoc-cli/           CLI binary (clap)
+  ruddydoc-backend-*/     12 format-specific parsers
+  ruddydoc-bench/         Criterion benchmarks
+  ruddydoc-tests/         Compatibility test suite
+ontology/
+  ruddydoc.ttl            Document ontology (24 classes, 50+ properties)
+  shapes.ttl              SHACL validation shapes
+```
 
 ## Contributing
 
-Please read [Contributing to Docling](https://github.com/docling-project/docling/blob/main/CONTRIBUTING.md) for details.
+Contributions are welcome. Key areas:
 
-## References
-
-If you use Docling in your projects, please consider citing the following:
-
-```bib
-@techreport{Docling,
-  author = {Deep Search Team},
-  month = {8},
-  title = {Docling Technical Report},
-  url = {https://arxiv.org/abs/2408.09869},
-  eprint = {2408.09869},
-  doi = {10.48550/arXiv.2408.09869},
-  version = {1.0.0},
-  year = {2024}
-}
-```
+- New input format backends
+- Export format improvements
+- ML model integrations (ONNX models for layout, OCR, table structure)
+- Performance optimizations
+- Documentation
 
 ## License
 
-The Docling codebase is under MIT license.
-For individual model usage, please refer to the model licenses found in the original packages.
-
-## LF AI & Data
-
-Docling is hosted as a project in the [LF AI & Data Foundation](https://lfaidata.foundation/projects/).
-
-### IBM ❤️ Open Source AI
-
-The project was started by the AI for knowledge team at IBM Research Zurich.
-
-[supported_formats]: https://docling-project.github.io/docling/usage/supported_formats/
-[docling_document]: https://docling-project.github.io/docling/concepts/docling_document/
-[integrations]: https://docling-project.github.io/docling/integrations/
-[extraction]: https://docling-project.github.io/docling/examples/extraction/
+MIT. See [LICENSE](LICENSE).

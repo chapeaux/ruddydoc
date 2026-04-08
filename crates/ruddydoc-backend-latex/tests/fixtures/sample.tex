@@ -1,0 +1,124 @@
+\documentclass{article}
+
+\title{A Sample Document}
+\author{Test Author}
+\date{2024-01-15}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+This is the abstract of the document. It provides a brief summary
+of the content discussed in the following sections.
+\end{abstract}
+
+\section{Introduction}
+\label{sec:intro}
+
+This is the introductory paragraph. It contains some \textbf{bold text}
+and some \emph{emphasized text} for testing inline formatting removal.
+
+% This is a comment and should be ignored by the parser.
+
+\subsection{Background}
+
+The background of the study is important. See Section~\ref{sec:intro}
+for more details.
+
+\subsubsection{Historical Context}
+
+A brief look at the historical context of this work.
+
+\paragraph{Early Work}
+
+Some early work was done in this field by \cite{knuth1984}.
+
+\section{Methods}
+
+\subsection{Data Collection}
+
+We collected data using the following methods:
+
+\begin{itemize}
+  \item First method of data collection
+  \item Second method with \textbf{bold} details
+  \item Third method of data collection
+\end{itemize}
+
+The steps of our analysis were:
+
+\begin{enumerate}
+  \item Preprocess the raw data
+  \item Apply the transformation algorithm
+  \item Validate the results
+\end{enumerate}
+
+\section{Results}
+
+\begin{table}[h]
+\centering
+\caption{Experimental Results}
+\label{tab:results}
+\begin{tabular}{|l|c|r|}
+\hline
+Name & Score & Rank \\
+\hline
+Alice & 95 & 1 \\
+Bob & 87 & 2 \\
+Carol & 92 & 3 \\
+\hline
+\end{tabular}
+\end{table}
+
+The relationship is described by the following equation:
+
+\begin{equation}
+\label{eq:main}
+E = mc^2
+\end{equation}
+
+We can also write inline-style display math:
+
+$$
+F = ma
+$$
+
+And bracket-style display math:
+
+\[
+\sum_{i=1}^{n} x_i = S
+\]
+
+\section{Discussion}
+
+\begin{figure}[h]
+\centering
+\includegraphics{diagram.png}
+\caption{A diagram showing the architecture}
+\label{fig:architecture}
+\end{figure}
+
+As shown in Figure~\ref{fig:architecture}, the system has multiple layers.
+
+\footnote{This is an important footnote about the discussion.}
+
+\subsection{Code Example}
+
+\begin{verbatim}
+fn main() {
+    println!("Hello, world!");
+}
+\end{verbatim}
+
+\begin{lstlisting}[language=Python]
+def hello():
+    print("Hello, world!")
+\end{lstlisting}
+
+\section{Conclusion}
+
+In conclusion, we have demonstrated the key findings of this study.
+See Equation~\ref{eq:main} and Table~\ref{tab:results} for details.
+
+\end{document}

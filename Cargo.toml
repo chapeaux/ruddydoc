@@ -1,0 +1,79 @@
+[workspace]
+resolver = "3"
+members = [
+    "crates/ruddydoc-core",
+    "crates/ruddydoc-graph",
+    "crates/ruddydoc-ontology",
+    "crates/ruddydoc-converter",
+    "crates/ruddydoc-pipeline",
+    "crates/ruddydoc-models",
+    "crates/ruddydoc-export",
+    "crates/ruddydoc-cli",
+    "crates/ruddydoc-backend-md",
+    "crates/ruddydoc-backend-html",
+    "crates/ruddydoc-backend-csv",
+    "crates/ruddydoc-backend-docx",
+    "crates/ruddydoc-backend-pdf",
+    "crates/ruddydoc-backend-latex",
+    "crates/ruddydoc-backend-pptx",
+    "crates/ruddydoc-backend-xlsx",
+    "crates/ruddydoc-backend-image",
+    "crates/ruddydoc-backend-xml",
+    "crates/ruddydoc-backend-webvtt",
+    "crates/ruddydoc-backend-asciidoc",
+    "crates/ruddydoc-server",
+    "crates/ruddydoc-bench",
+    "crates/ruddydoc-tests",
+]
+
+[workspace.package]
+edition = "2024"
+license = "MIT"
+repository = "https://github.com/chapeaux/ruddydoc"
+homepage = "https://github.com/chapeaux/ruddydoc"
+
+[workspace.dependencies]
+# Internal crates
+ruddydoc-core = { path = "crates/ruddydoc-core" }
+ruddydoc-graph = { path = "crates/ruddydoc-graph" }
+ruddydoc-ontology = { path = "crates/ruddydoc-ontology" }
+ruddydoc-converter = { path = "crates/ruddydoc-converter" }
+ruddydoc-pipeline = { path = "crates/ruddydoc-pipeline" }
+ruddydoc-models = { path = "crates/ruddydoc-models", default-features = false }
+ruddydoc-export = { path = "crates/ruddydoc-export" }
+ruddydoc-backend-md = { path = "crates/ruddydoc-backend-md" }
+ruddydoc-backend-html = { path = "crates/ruddydoc-backend-html" }
+ruddydoc-backend-csv = { path = "crates/ruddydoc-backend-csv" }
+ruddydoc-backend-docx = { path = "crates/ruddydoc-backend-docx" }
+ruddydoc-backend-pdf = { path = "crates/ruddydoc-backend-pdf" }
+ruddydoc-backend-latex = { path = "crates/ruddydoc-backend-latex" }
+ruddydoc-backend-pptx = { path = "crates/ruddydoc-backend-pptx" }
+ruddydoc-backend-xlsx = { path = "crates/ruddydoc-backend-xlsx" }
+ruddydoc-backend-image = { path = "crates/ruddydoc-backend-image" }
+ruddydoc-backend-xml = { path = "crates/ruddydoc-backend-xml" }
+ruddydoc-backend-webvtt = { path = "crates/ruddydoc-backend-webvtt" }
+ruddydoc-backend-asciidoc = { path = "crates/ruddydoc-backend-asciidoc" }
+ruddydoc-server = { path = "crates/ruddydoc-server" }
+
+# External dependencies (shared versions)
+oxigraph = "0.5"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+clap = { version = "4", features = ["derive"] }
+pulldown-cmark = "0.13"
+scraper = "0.26"
+csv = "1"
+quick-xml = "0.37"
+zip = "2"
+lopdf = "0.40"
+calamine = "0.34"
+image = "0.25"
+ort = "2.0.0-rc.12"
+rayon = "1"
+tokio = { version = "1", features = ["full"] }
+criterion = { version = "0.5", features = ["html_reports"] }
+
+[profile.release]
+lto = true
+codegen-units = 1
