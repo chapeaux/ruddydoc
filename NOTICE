@@ -1,0 +1,14 @@
+RuddyDoc
+
+Copyright (c) 2026 the RuddyDoc contributors.
+
+RuddyDoc is a derivative work, ported to Rust from the Python "docling"
+project (https://github.com/docling-project/docling), which is licensed
+under the MIT License.
+
+Original docling copyright:
+  Copyright (c) the docling-project contributors.
+  See https://github.com/docling-project/docling/blob/main/LICENSE
+
+The document ontology design (ontology/ruddydoc.ttl) draws on concepts
+from the docling document model but is an independent RDF vocabulary.
