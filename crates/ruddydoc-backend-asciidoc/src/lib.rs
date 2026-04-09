@@ -889,6 +889,7 @@ impl DocumentBackend for AsciiDocBackend {
             format: InputFormat::AsciiDoc,
             file_size,
             page_count: None,
+            language: None,
         })
     }
 }

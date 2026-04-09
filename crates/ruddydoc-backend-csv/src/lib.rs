@@ -321,6 +321,7 @@ impl DocumentBackend for CsvBackend {
             format: InputFormat::Csv,
             file_size,
             page_count: None,
+            language: None,
         })
     }
 }

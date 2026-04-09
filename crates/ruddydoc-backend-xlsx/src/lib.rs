@@ -283,6 +283,7 @@ impl DocumentBackend for XlsxBackend {
             format: InputFormat::Xlsx,
             file_size,
             page_count: None,
+            language: None,
         })
     }
 }

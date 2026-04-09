@@ -20,6 +20,7 @@
 //! pipeline works without the `models` feature enabled.
 
 pub mod doctags;
+pub mod normalize;
 
 use std::sync::Arc;
 use std::time::Instant;
@@ -31,6 +32,9 @@ use ruddydoc_ontology as ont;
 
 // Re-export DocTags parser at crate root.
 pub use doctags::DocTagsParser;
+
+// Re-export normalization utilities at crate root.
+pub use normalize::{TextNormalizationStage, ascii_fold};
 
 // ---------------------------------------------------------------------------
 // Pipeline stage trait
@@ -246,12 +250,15 @@ impl Pipeline {
             .add_stage(Box::new(TableStructureStage::new()))
             .add_stage(Box::new(OcrStage::new()))
             .add_stage(Box::new(ReadingOrderStage))
+            .add_stage(Box::new(TextNormalizationStage))
             .add_stage(Box::new(ProvenanceStage))
     }
 
-    /// Simple pipeline with no ML stages -- only reading order.
+    /// Simple pipeline with no ML stages -- reading order then text normalization.
     pub fn simple() -> Self {
-        Pipeline::new().add_stage(Box::new(ReadingOrderStage))
+        Pipeline::new()
+            .add_stage(Box::new(ReadingOrderStage))
+            .add_stage(Box::new(TextNormalizationStage))
     }
 
     /// Pipeline for image-only documents: OCR first, then reading order.
@@ -269,6 +276,7 @@ impl Pipeline {
         Pipeline::new()
             .add_stage(Box::new(VlmPipelineStage::default()))
             .add_stage(Box::new(ReadingOrderStage))
+            .add_stage(Box::new(TextNormalizationStage))
             .add_stage(Box::new(ProvenanceStage))
     }
 }
@@ -919,6 +927,7 @@ mod tests {
             format: InputFormat::Pdf,
             file_size: 1024,
             page_count: Some(2),
+            language: None,
         }
     }
 
@@ -975,9 +984,9 @@ mod tests {
     // -- Factory method tests --
 
     #[test]
-    fn standard_pdf_pipeline_has_five_stages() {
+    fn standard_pdf_pipeline_has_six_stages() {
         let pipeline = Pipeline::standard_pdf();
-        assert_eq!(pipeline.stage_count(), 5);
+        assert_eq!(pipeline.stage_count(), 6);
         assert_eq!(
             pipeline.stage_names(),
             vec![
@@ -985,16 +994,20 @@ mod tests {
                 "table_structure",
                 "ocr",
                 "reading_order",
+                "text_normalization",
                 "provenance"
             ]
         );
     }
 
     #[test]
-    fn simple_pipeline_has_one_stage() {
+    fn simple_pipeline_has_two_stages() {
         let pipeline = Pipeline::simple();
-        assert_eq!(pipeline.stage_count(), 1);
-        assert_eq!(pipeline.stage_names(), vec!["reading_order"]);
+        assert_eq!(pipeline.stage_count(), 2);
+        assert_eq!(
+            pipeline.stage_names(),
+            vec!["reading_order", "text_normalization"]
+        );
     }
 
     #[test]
@@ -1414,6 +1427,7 @@ mod tests {
         assert_eq!(OcrStage::new().name(), "ocr");
         assert_eq!(ProvenanceStage.name(), "provenance");
         assert_eq!(VlmPipelineStage::default().name(), "vlm");
+        assert_eq!(TextNormalizationStage.name(), "text_normalization");
     }
 
     // -- VlmPipelineStage tests --
@@ -1496,10 +1510,10 @@ mod tests {
     #[test]
     fn vlm_pipeline_factory() {
         let pipeline = Pipeline::vlm();
-        assert_eq!(pipeline.stage_count(), 3);
+        assert_eq!(pipeline.stage_count(), 4);
         assert_eq!(
             pipeline.stage_names(),
-            vec!["vlm", "reading_order", "provenance"]
+            vec!["vlm", "reading_order", "text_normalization", "provenance"]
         );
     }
 
@@ -1512,10 +1526,11 @@ mod tests {
         let result = pipeline
             .run(&mut ctx)
             .expect("VLM pipeline should succeed without images");
-        assert_eq!(result.stage_results.len(), 3);
+        assert_eq!(result.stage_results.len(), 4);
         assert_eq!(result.stage_results[0].stage_name, "vlm");
         assert_eq!(result.stage_results[1].stage_name, "reading_order");
-        assert_eq!(result.stage_results[2].stage_name, "provenance");
+        assert_eq!(result.stage_results[2].stage_name, "text_normalization");
+        assert_eq!(result.stage_results[3].stage_name, "provenance");
     }
 
     // -- Full pipeline run tests --
@@ -1529,8 +1544,9 @@ mod tests {
         let result = pipeline
             .run(&mut ctx)
             .expect("simple pipeline should succeed");
-        assert_eq!(result.stage_results.len(), 1);
+        assert_eq!(result.stage_results.len(), 2);
         assert_eq!(result.stage_results[0].stage_name, "reading_order");
+        assert_eq!(result.stage_results[1].stage_name, "text_normalization");
     }
 
     #[test]
@@ -1542,7 +1558,7 @@ mod tests {
         let result = pipeline
             .run(&mut ctx)
             .expect("standard PDF pipeline should succeed without images");
-        assert_eq!(result.stage_results.len(), 5);
+        assert_eq!(result.stage_results.len(), 6);
 
         // All stages should have run but done minimal work.
         for sr in &result.stage_results {

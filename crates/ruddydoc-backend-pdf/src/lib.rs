@@ -929,14 +929,34 @@ impl DocumentBackend for PdfBackend {
             }
         }
 
+        // Opportunistically extract language from PDF Info dictionary.
+        let doc_language = extract_pdf_language(&pdf);
+        if let Some(ref lang) = doc_language {
+            store.insert_literal(&doc_iri, &ont::iri(ont::PROP_LANGUAGE), lang, "string", g)?;
+        }
+
         Ok(DocumentMeta {
             file_path,
             hash: doc_hash,
             format: InputFormat::Pdf,
             file_size,
             page_count: Some(page_count),
+            language: doc_language,
         })
     }
+}
+
+/// Extract the language from a PDF's Info dictionary "Lang" key.
+///
+/// This is an optional standard PDF metadata field. Returns `None` if
+/// not present.
+fn extract_pdf_language(pdf: &lopdf::Document) -> Option<String> {
+    let info_ref = pdf.trailer.get(b"Info").ok()?;
+    let info_id = info_ref.as_reference().ok()?;
+    let info_dict = pdf.get_dictionary(info_id).ok()?;
+    let bytes = info_dict.get(b"Lang").and_then(|o| o.as_str()).ok()?;
+    let lang = decode_pdf_string(bytes);
+    if lang.is_empty() { None } else { Some(lang) }
 }
 
 /// Extract PDF metadata from the Info dictionary and insert as Dublin Core

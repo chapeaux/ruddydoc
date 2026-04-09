@@ -1368,6 +1368,7 @@ impl DocumentBackend for LatexBackend {
             format: InputFormat::Latex,
             file_size,
             page_count: None,
+            language: None,
         })
     }
 }

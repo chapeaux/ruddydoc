@@ -11,8 +11,9 @@ fn sparql_count_paragraphs_matches_fixture() {
 
     let count = count_paragraphs(&store, &graph);
 
-    // sample.md has 3 regular paragraphs
-    assert_eq!(count, 3, "expected 3 paragraphs in sample.md");
+    // sample.md has 6 paragraphs (intro, features description,
+    // code-block lead-ins, conclusion, and block quote content)
+    assert_eq!(count, 6, "expected 6 paragraphs in sample.md");
 }
 
 #[test]
@@ -275,8 +276,5 @@ fn sparql_triple_count_is_reasonable() {
     );
 
     // But not an unreasonable number (sanity check)
-    assert!(
-        count < 1000,
-        "triple count seems excessive: {count}"
-    );
+    assert!(count < 1000, "triple count seems excessive: {count}");
 }

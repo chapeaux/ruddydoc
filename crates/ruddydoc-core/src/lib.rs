@@ -260,6 +260,8 @@ pub struct DocumentMeta {
     pub file_size: u64,
     /// Number of pages (for paginated formats like PDF, PPTX).
     pub page_count: Option<u32>,
+    /// BCP 47 language tag (e.g., "en", "fr", "zh-Hans").
+    pub language: Option<String>,
 }
 
 // ---------------------------------------------------------------------------
@@ -362,6 +364,23 @@ pub trait DocumentStore: Send + Sync {
 
     /// Count triples in a specific named graph.
     fn triple_count_in(&self, graph: &str) -> Result<usize>;
+
+    /// Insert a language-tagged literal into a named graph.
+    ///
+    /// The default implementation falls back to a plain `xsd:string` literal,
+    /// discarding the language tag. Implementations backed by a full RDF store
+    /// should override this to produce a proper `rdf:langString`.
+    fn insert_language_tagged_literal(
+        &self,
+        subject: &str,
+        predicate: &str,
+        value: &str,
+        language: &str,
+        graph: &str,
+    ) -> Result<()> {
+        let _ = language;
+        self.insert_literal(subject, predicate, value, "string", graph)
+    }
 }
 
 // ---------------------------------------------------------------------------

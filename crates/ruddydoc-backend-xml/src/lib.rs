@@ -363,6 +363,7 @@ impl DocumentBackend for XmlBackend {
             format: InputFormat::Xml,
             file_size,
             page_count: None,
+            language: None,
         })
     }
 }

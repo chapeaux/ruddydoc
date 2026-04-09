@@ -41,6 +41,9 @@ pub struct ChunkMetadata {
     /// The ontology class local names of elements in this chunk
     /// (e.g., `"Paragraph"`, `"ListItem"`, `"Code"`).
     pub element_types: Vec<String>,
+    /// BCP 47 language tag of the document, if available.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub language: Option<String>,
 }
 
 /// Options controlling how a document is chunked.
@@ -617,6 +620,7 @@ fn merge_candidates(candidates: Vec<ChunkCandidate>, options: &ChunkOptions) -> 
                     headings: candidate.headings,
                     page_numbers: candidate.page_numbers,
                     element_types: candidate.element_types,
+                    language: None, // populated by chunk_document()
                 },
             });
         }
@@ -762,6 +766,9 @@ pub fn chunk_document(
         return Ok(Vec::new());
     }
 
+    // Query document language for inclusion in chunk metadata.
+    let language = query_document_language(store, doc_graph)?;
+
     let mut candidates = build_candidates(&elements, options);
     enrich_table_candidates(&mut candidates, store, doc_graph)?;
 
@@ -773,11 +780,36 @@ pub fn chunk_document(
         .enumerate()
         .map(|(i, mut c)| {
             c.metadata.chunk_index = i;
+            c.metadata.language = language.clone();
             c
         })
         .collect();
 
     Ok(chunks)
+}
+
+/// Query the document language from `rdoc:language`.
+fn query_document_language(
+    store: &dyn DocumentStore,
+    doc_graph: &str,
+) -> ruddydoc_core::Result<Option<String>> {
+    let sparql = format!(
+        "SELECT ?lang WHERE {{ \
+           GRAPH <{doc_graph}> {{ \
+             ?doc a <{doc_class}>. \
+             ?doc <{language}> ?lang \
+           }} \
+         }} LIMIT 1",
+        doc_class = ont::iri(ont::CLASS_DOCUMENT),
+        language = ont::iri(ont::PROP_LANGUAGE),
+    );
+    let result = store.query_to_json(&sparql)?;
+    Ok(result
+        .as_array()
+        .and_then(|rows| rows.first())
+        .and_then(|row| row.get("lang"))
+        .and_then(|v| v.as_str())
+        .map(clean_literal))
 }
 
 // ---------------------------------------------------------------------------

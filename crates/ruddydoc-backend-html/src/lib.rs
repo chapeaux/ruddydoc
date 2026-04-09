@@ -923,12 +923,26 @@ impl DocumentBackend for HtmlBackend {
             }
         }
 
+        // Extract language from <html lang="..."> attribute
+        let html_sel = Selector::parse("html").expect("valid selector");
+        let doc_language = document
+            .select(&html_sel)
+            .next()
+            .and_then(|el| el.value().attr("lang"))
+            .map(|s| s.to_string());
+
+        // If language found, insert rdoc:language on the document node
+        if let Some(ref lang) = doc_language {
+            store.insert_literal(&doc_iri, &ont::iri(ont::PROP_LANGUAGE), lang, "string", g)?;
+        }
+
         Ok(DocumentMeta {
             file_path,
             hash: doc_hash,
             format: InputFormat::Html,
             file_size,
             page_count: None,
+            language: doc_language,
         })
     }
 }
@@ -1804,6 +1818,42 @@ mod tests {
             );
         }
 
+        Ok(())
+    }
+
+    #[test]
+    fn parse_html_with_lang_attribute() -> ruddydoc_core::Result<()> {
+        let html = r#"<html lang="fr"><body><p>Bonjour</p></body></html>"#;
+        let (store, meta, graph) = parse_html(html)?;
+
+        // DocumentMeta should have language set
+        assert_eq!(meta.language, Some("fr".to_string()));
+
+        // rdoc:language should be set in the graph
+        let doc_iri = ruddydoc_core::doc_iri(&meta.hash.0);
+        let sparql = format!(
+            "SELECT ?lang WHERE {{ \
+               GRAPH <{graph}> {{ \
+                 <{doc_iri}> <{}> ?lang \
+               }} \
+             }}",
+            ont::iri(ont::PROP_LANGUAGE),
+        );
+        let result = store.query_to_json(&sparql)?;
+        let rows = result.as_array().expect("expected array");
+        assert_eq!(rows.len(), 1);
+        let lang = rows[0]["lang"].as_str().expect("lang");
+        assert!(lang.contains("fr"));
+        Ok(())
+    }
+
+    #[test]
+    fn parse_html_without_lang_attribute() -> ruddydoc_core::Result<()> {
+        let html = "<html><body><p>Hello</p></body></html>";
+        let (_store, meta, _graph) = parse_html(html)?;
+
+        // No lang attribute -> None
+        assert_eq!(meta.language, None);
         Ok(())
     }
 }

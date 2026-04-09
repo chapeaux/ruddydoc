@@ -508,6 +508,31 @@ fn extract_header_footer_text(xml: &str) -> String {
     text_buf.trim().to_string()
 }
 
+/// Extract the document language from DOCX XML.
+///
+/// Looks for `<w:lang w:val="..."/>` elements in the document XML.
+/// Returns the first language tag found, if any.
+fn extract_docx_language(xml: &str) -> Option<String> {
+    let mut reader = Reader::from_str(xml);
+    loop {
+        match reader.read_event() {
+            Ok(Event::Start(ref e) | Event::Empty(ref e)) => {
+                let local = local_name_str(e);
+                if local == "lang"
+                    && let Some(val) = get_attr(e, "val")
+                    && !val.is_empty()
+                {
+                    return Some(val);
+                }
+            }
+            Ok(Event::Eof) => break,
+            Err(_) => break,
+            _ => {}
+        }
+    }
+    None
+}
+
 // -----------------------------------------------------------------------
 // Document XML parsing
 // -----------------------------------------------------------------------
@@ -1310,12 +1335,19 @@ impl DocumentBackend for DocxBackend {
             }
         }
 
+        // Opportunistically extract language from document properties.
+        let doc_language = extract_docx_language(&document_xml);
+        if let Some(ref lang) = doc_language {
+            store.insert_literal(&doc_iri, &ont::iri(ont::PROP_LANGUAGE), lang, "string", g)?;
+        }
+
         Ok(DocumentMeta {
             file_path,
             hash: doc_hash,
             format: InputFormat::Docx,
             file_size,
             page_count: None,
+            language: doc_language,
         })
     }
 }

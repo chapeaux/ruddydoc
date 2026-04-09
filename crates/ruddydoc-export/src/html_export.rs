@@ -157,9 +157,11 @@ impl DocumentExporter for HtmlExporter {
         }
 
         let escaped_title = escape_html(&title);
+        let lang = query_document_language(store, doc_graph)?;
+        let lang_attr = lang.as_deref().unwrap_or("en");
         let html = format!(
             "<!DOCTYPE html>\n\
-             <html lang=\"en\">\n\
+             <html lang=\"{lang_attr}\">\n\
              <head>\n\
              <meta charset=\"utf-8\">\n\
              <title>{escaped_title}</title>\n\
@@ -179,6 +181,30 @@ impl DocumentExporter for HtmlExporter {
 // ---------------------------------------------------------------------------
 // Query helpers
 // ---------------------------------------------------------------------------
+
+/// Query the document language from the `rdoc:language` property.
+fn query_document_language(
+    store: &dyn DocumentStore,
+    doc_graph: &str,
+) -> ruddydoc_core::Result<Option<String>> {
+    let sparql = format!(
+        "SELECT ?lang WHERE {{ \
+           GRAPH <{doc_graph}> {{ \
+             ?doc a <{doc_class}>. \
+             ?doc <{language}> ?lang \
+           }} \
+         }} LIMIT 1",
+        doc_class = ont::iri(ont::CLASS_DOCUMENT),
+        language = ont::iri(ont::PROP_LANGUAGE),
+    );
+    let result = store.query_to_json(&sparql)?;
+    Ok(result
+        .as_array()
+        .and_then(|rows| rows.first())
+        .and_then(|row| row.get("lang"))
+        .and_then(|v| v.as_str())
+        .map(clean_literal))
+}
 
 /// Query the document title (from document name or first heading).
 fn query_title(store: &dyn DocumentStore, doc_graph: &str) -> ruddydoc_core::Result<String> {

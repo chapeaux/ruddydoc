@@ -226,6 +226,34 @@ impl DocumentStore for OxigraphStore {
             .count();
         Ok(count)
     }
+
+    fn insert_language_tagged_literal(
+        &self,
+        subject: &str,
+        predicate: &str,
+        value: &str,
+        language: &str,
+        graph: &str,
+    ) -> ruddydoc_core::Result<()> {
+        let s = iri_escape(subject);
+        let p = iri_escape(predicate);
+        let g = iri_escape(graph);
+
+        let s_node = NamedNode::new(&s)?;
+        let p_node = NamedNode::new(&p)?;
+        let g_node = GraphName::NamedNode(NamedNode::new(&g)?);
+
+        let literal = Literal::new_language_tagged_literal(value, language)
+            .map_err(|e| format!("invalid BCP 47 language tag '{language}': {e}"))?;
+
+        self.store.insert(QuadRef::new(
+            s_node.as_ref(),
+            p_node.as_ref(),
+            &literal,
+            g_node.as_ref(),
+        ))?;
+        Ok(())
+    }
 }
 
 #[cfg(test)]
@@ -512,6 +540,81 @@ mod tests {
         let result_empty =
             store.query_to_json("ASK { <urn:nonexistent> <urn:nonexistent> <urn:nonexistent> }")?;
         assert_eq!(result_empty, Value::Bool(false));
+        Ok(())
+    }
+
+    #[test]
+    fn insert_language_tagged_literal() -> std::result::Result<(), Error> {
+        let store = OxigraphStore::new()?;
+        let graph = "urn:ruddydoc:doc:lang_test";
+
+        store.insert_language_tagged_literal(
+            "urn:ruddydoc:doc:lang_test/p0",
+            RDOC_TEXT_CONTENT,
+            "Bonjour",
+            "fr",
+            graph,
+        )?;
+
+        let sparql = format!(
+            "SELECT ?text WHERE {{ GRAPH <{graph}> {{ ?s <{RDOC_TEXT_CONTENT}> ?text }} }}"
+        );
+        let json = store.query_to_json(&sparql)?;
+        let rows = json.as_array().expect("expected array");
+        assert_eq!(rows.len(), 1);
+
+        let text_val = rows[0]["text"].as_str().expect("expected string");
+        // Oxigraph renders language-tagged literals as "value"@lang
+        assert!(text_val.contains("Bonjour"));
+        Ok(())
+    }
+
+    #[test]
+    fn language_tagged_literal_with_lang_filter() -> std::result::Result<(), Error> {
+        let store = OxigraphStore::new()?;
+        let graph = "urn:ruddydoc:doc:lang_filter";
+
+        store.insert_language_tagged_literal(
+            "urn:ruddydoc:doc:lang_filter/p0",
+            RDOC_TEXT_CONTENT,
+            "Hello",
+            "en",
+            graph,
+        )?;
+        store.insert_language_tagged_literal(
+            "urn:ruddydoc:doc:lang_filter/p1",
+            RDOC_TEXT_CONTENT,
+            "Bonjour",
+            "fr",
+            graph,
+        )?;
+
+        // Filter to only French literals
+        let sparql = format!(
+            "SELECT ?text WHERE {{ GRAPH <{graph}> {{ ?s <{RDOC_TEXT_CONTENT}> ?text . FILTER(LANG(?text) = \"fr\") }} }}"
+        );
+        let json = store.query_to_json(&sparql)?;
+        let rows = json.as_array().expect("expected array");
+        assert_eq!(rows.len(), 1);
+        let text_val = rows[0]["text"].as_str().expect("expected string");
+        assert!(text_val.contains("Bonjour"));
+        Ok(())
+    }
+
+    #[test]
+    fn language_tagged_literal_invalid_tag() -> std::result::Result<(), Error> {
+        let store = OxigraphStore::new()?;
+        let graph = "urn:ruddydoc:doc:bad_lang";
+
+        // An invalid BCP 47 tag should produce an error
+        let result = store.insert_language_tagged_literal(
+            "urn:ruddydoc:doc:bad_lang/p0",
+            RDOC_TEXT_CONTENT,
+            "test",
+            "not a valid tag!!",
+            graph,
+        );
+        assert!(result.is_err());
         Ok(())
     }
 

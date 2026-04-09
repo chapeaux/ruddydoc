@@ -86,7 +86,10 @@ fn turtle_export_is_valid_turtle() {
     assert!(!turtle.is_empty(), "Turtle export is empty");
 
     // Should have statement terminators
-    assert!(turtle.contains(" ."), "Turtle should have statement terminators");
+    assert!(
+        turtle.contains(" ."),
+        "Turtle should have statement terminators"
+    );
 
     // Should contain ontology terms
     assert!(
@@ -181,9 +184,15 @@ fn all_export_formats_produce_nonempty_output() {
     ];
 
     for (exporter, name) in formats {
-        let output = exporter.export(&store, &graph).expect(&format!("{name} export failed"));
+        let output = exporter
+            .export(&store, &graph)
+            .expect(&format!("{name} export failed"));
         assert!(!output.is_empty(), "{name} export is empty");
-        assert!(output.len() > 10, "{name} export is suspiciously short: {} bytes", output.len());
+        assert!(
+            output.len() > 10,
+            "{name} export is suspiciously short: {} bytes",
+            output.len()
+        );
     }
 }
 
@@ -228,7 +237,9 @@ fn json_export_table_cells_have_positions() {
     let tables = json["tables"].as_array().unwrap();
 
     for (i, table) in tables.iter().enumerate() {
-        let cells = table["cells"].as_array().expect(&format!("table[{i}] missing cells"));
+        let cells = table["cells"]
+            .as_array()
+            .expect(&format!("table[{i}] missing cells"));
 
         for (j, cell) in cells.iter().enumerate() {
             assert!(
@@ -258,13 +269,19 @@ fn html_export_has_semantic_structure() {
     let html = exporter.export(&store, &graph).expect("export failed");
 
     // Should use semantic HTML5 elements
-    assert!(html.contains("<h1") || html.contains("<h2"), "HTML should have headings");
+    assert!(
+        html.contains("<h1") || html.contains("<h2"),
+        "HTML should have headings"
+    );
     assert!(html.contains("<p"), "HTML should have paragraphs");
 
     // Tables should be proper table elements
     if html.contains("<table") {
         assert!(html.contains("<tr"), "HTML tables should have rows");
-        assert!(html.contains("<td") || html.contains("<th"), "HTML tables should have cells");
+        assert!(
+            html.contains("<td") || html.contains("<th"),
+            "HTML tables should have cells"
+        );
     }
 
     // Code blocks should be in <pre><code>

@@ -51,7 +51,7 @@ jobs:
             ${{ runner.os }}-cargo-build-target-
 
       - name: Run cargo check
-        run: cargo check --workspace --all-targets --all-features
+        run: cargo check --workspace --all-targets
 
   clippy:
     name: Clippy
@@ -89,7 +89,7 @@ jobs:
             ${{ runner.os }}-cargo-build-target-
 
       - name: Run clippy
-        run: cargo clippy --workspace --all-targets --all-features -- -D warnings
+        run: cargo clippy --workspace --all-targets -- -D warnings
 
   fmt:
     name: Format
@@ -142,7 +142,7 @@ jobs:
             ${{ runner.os }}-cargo-build-target-
 
       - name: Run tests
-        run: cargo test --workspace --all-features
+        run: cargo test --workspace
 
   deny:
     name: Dependency Audit

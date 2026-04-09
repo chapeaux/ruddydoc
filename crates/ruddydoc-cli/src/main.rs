@@ -1,12 +1,15 @@
 //! Command-line interface for RuddyDoc document conversion.
 
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use clap::{Parser, Subcommand, ValueEnum};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
-use ruddydoc_converter::{ConversionResult, ConvertOptions, DocumentConverter};
+use ruddydoc_converter::{
+    ConversionResult, ConvertOptions, DocumentConverter, LanguageVariant, TranslationGroupConfig,
+};
 use ruddydoc_core::{ConversionStatus, DocumentSource, DocumentStore, OutputFormat};
 
 /// RuddyDoc: fast document conversion with an embedded knowledge graph.
@@ -132,6 +135,18 @@ struct ConvertArgs {
     /// Maximum file size in bytes.
     #[arg(long)]
     max_file_size: Option<u64>,
+
+    /// Language of the document (BCP 47 tag, e.g., "en", "fr").
+    #[arg(long)]
+    language: Option<String>,
+
+    /// Path to a translation manifest file (TOML).
+    #[arg(long)]
+    manifest: Option<PathBuf>,
+
+    /// Enable text normalization for accent-insensitive search.
+    #[arg(long, default_value_t = true, action = clap::ArgAction::Set)]
+    normalize: bool,
 }
 
 // ---------------------------------------------------------------------------
@@ -221,6 +236,24 @@ enum ModelsAction {
 }
 
 // ---------------------------------------------------------------------------
+// Translation manifest
+// ---------------------------------------------------------------------------
+
+/// A TOML translation manifest.
+#[derive(Deserialize)]
+struct Manifest {
+    translations: Vec<ManifestEntry>,
+}
+
+/// A single entry in a translation manifest.
+#[derive(Deserialize)]
+struct ManifestEntry {
+    group: String,
+    language: String,
+    source: String,
+}
+
+// ---------------------------------------------------------------------------
 // Main
 // ---------------------------------------------------------------------------
 
@@ -268,6 +301,11 @@ fn main() {
 
 /// Run the convert subcommand. Returns an exit code (0, 1, or 2).
 fn run_convert(args: &ConvertArgs) -> i32 {
+    // If a manifest is provided, process translation groups.
+    if let Some(manifest_path) = &args.manifest {
+        return run_convert_manifest(manifest_path, args);
+    }
+
     let is_batch = args.files.len() > 1;
     let output_dir = if is_batch {
         args.output.as_deref()
@@ -302,10 +340,107 @@ fn run_convert(args: &ConvertArgs) -> i32 {
             output_dir,
             &args.format,
             args.max_file_size,
+            args.language.as_deref(),
         ) {
             Ok(()) => success_count += 1,
             Err(e) => {
                 eprintln!("error: {e}");
+                fail_count += 1;
+            }
+        }
+    }
+
+    if fail_count == 0 {
+        0
+    } else if success_count == 0 {
+        1
+    } else {
+        2
+    }
+}
+
+/// Process a translation manifest and convert all translation groups.
+fn run_convert_manifest(manifest_path: &Path, args: &ConvertArgs) -> i32 {
+    let manifest_content = match std::fs::read_to_string(manifest_path) {
+        Ok(c) => c,
+        Err(e) => {
+            eprintln!(
+                "error: failed to read manifest '{}': {e}",
+                manifest_path.display()
+            );
+            return 1;
+        }
+    };
+
+    let manifest: Manifest = match toml::from_str(&manifest_content) {
+        Ok(m) => m,
+        Err(e) => {
+            eprintln!(
+                "error: failed to parse manifest '{}': {e}",
+                manifest_path.display()
+            );
+            return 1;
+        }
+    };
+
+    // Group entries by group name.
+    let mut groups: HashMap<String, Vec<&ManifestEntry>> = HashMap::new();
+    for entry in &manifest.translations {
+        groups.entry(entry.group.clone()).or_default().push(entry);
+    }
+
+    let options = ConvertOptions {
+        max_file_size: args.max_file_size,
+        max_pages: None,
+    };
+    let converter = DocumentConverter::new(options);
+
+    let mut success_count = 0usize;
+    let mut fail_count = 0usize;
+
+    for (group_id, entries) in &groups {
+        let variants: Vec<LanguageVariant> = entries
+            .iter()
+            .map(|e| LanguageVariant {
+                source: DocumentSource::File(PathBuf::from(&e.source)),
+                language: e.language.clone(),
+            })
+            .collect();
+
+        let config = TranslationGroupConfig {
+            group_id: group_id.clone(),
+            variants,
+        };
+
+        match converter.convert_translation_group(config) {
+            Ok(result) => {
+                eprintln!(
+                    "translated group '{}': {} variants, group IRI: {}",
+                    result.group_id,
+                    result.variants.len(),
+                    result.group_iri,
+                );
+
+                // Export each variant
+                let output_format = args.format.to_output_format();
+                for vr in &result.variants {
+                    if vr.status == ConversionStatus::Success {
+                        match export_result(vr, output_format) {
+                            Ok(exported) => {
+                                println!("{exported}");
+                            }
+                            Err(e) => {
+                                eprintln!("error exporting variant: {e}");
+                                fail_count += 1;
+                                continue;
+                            }
+                        }
+                    }
+                }
+                success_count += 1;
+            }
+            Err(e) => {
+                eprintln!("error: translation group '{group_id}': {e}");
                 fail_count += 1;
             }
         }
@@ -329,6 +464,7 @@ fn run_convert_single(
     output_dir: Option<&Path>,
     format: &OutputFormatArg,
     max_file_size: Option<u64>,
+    language: Option<&str>,
 ) -> ruddydoc_core::Result<()> {
     if !input.exists() {
         return Err(format!("file not found: {}", input.display()).into());
@@ -341,6 +477,11 @@ fn run_convert_single(
     let converter = DocumentConverter::new(options);
     let source = DocumentSource::File(input.to_path_buf());
     let result = converter.convert(source)?;
+
+    // If --language is provided, set rdoc:language on the document node.
+    if let Some(lang) = language {
+        DocumentConverter::set_language(&result, lang)?;
+    }
 
     if result.status == ConversionStatus::Failure {
         return Err(format!(
@@ -1148,5 +1289,71 @@ mod tests {
         let result =
             Cli::try_parse_from(["ruddydoc", "convert", "doc.md", "--format", "badformat"]);
         assert!(result.is_err(), "invalid format should fail");
+    }
+
+    // -----------------------------------------------------------------------
+    // CLI parsing: language and manifest
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn parse_convert_with_language() {
+        let cli = Cli::parse_from(["ruddydoc", "convert", "doc.md", "--language", "fr"]);
+        match cli.command {
+            Commands::Convert(args) => {
+                assert_eq!(args.language, Some("fr".to_string()));
+            }
+            _ => panic!("expected Convert command"),
+        }
+    }
+
+    #[test]
+    fn parse_convert_with_manifest() {
+        let cli = Cli::parse_from([
+            "ruddydoc",
+            "convert",
+            "doc.md",
+            "--manifest",
+            "translations.toml",
+        ]);
+        match cli.command {
+            Commands::Convert(args) => {
+                assert_eq!(args.manifest, Some(PathBuf::from("translations.toml")));
+            }
+            _ => panic!("expected Convert command"),
+        }
+    }
+
+    #[test]
+    fn parse_convert_normalize_default_true() {
+        let cli = Cli::parse_from(["ruddydoc", "convert", "doc.md"]);
+        match cli.command {
+            Commands::Convert(args) => {
+                assert!(args.normalize, "normalize should default to true");
+            }
+            _ => panic!("expected Convert command"),
+        }
+    }
+
+    #[test]
+    fn parse_convert_normalize_false() {
+        let cli = Cli::parse_from(["ruddydoc", "convert", "doc.md", "--normalize", "false"]);
+        match cli.command {
+            Commands::Convert(args) => {
+                assert!(!args.normalize, "normalize should be false");
+            }
+            _ => panic!("expected Convert command"),
+        }
+    }
+
+    #[test]
+    fn parse_convert_language_none_by_default() {
+        let cli = Cli::parse_from(["ruddydoc", "convert", "doc.md"]);
+        match cli.command {
+            Commands::Convert(args) => {
+                assert!(args.language.is_none());
+                assert!(args.manifest.is_none());
+            }
+            _ => panic!("expected Convert command"),
+        }
     }
 }

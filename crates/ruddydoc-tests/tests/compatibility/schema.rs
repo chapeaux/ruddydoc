@@ -52,7 +52,9 @@ fn json_schema_all_text_types_are_valid() {
     ];
 
     for (i, text) in texts.iter().enumerate() {
-        let text_type = text["type"].as_str().expect(&format!("text[{i}] missing type"));
+        let text_type = text["type"]
+            .as_str()
+            .expect(&format!("text[{i}] missing type"));
         assert!(
             valid_types.contains(&text_type),
             "text[{i}] has invalid type: {text_type}"
@@ -112,7 +114,9 @@ fn json_schema_source_format_is_valid() {
     let (store, graph) = parse_file(&backend, "tests/fixtures/sample.md");
 
     let json = export_json(&store, &graph);
-    let source_format = json["source_format"].as_str().expect("missing source_format");
+    let source_format = json["source_format"]
+        .as_str()
+        .expect("missing source_format");
 
     // Valid source formats (matching InputFormat enum)
     let valid_formats = [
@@ -226,9 +230,6 @@ fn json_schema_code_blocks_have_optional_language() {
         }
 
         // text field is required
-        assert!(
-            code.get("text").is_some(),
-            "code[{i}] missing text field"
-        );
+        assert!(code.get("text").is_some(), "code[{i}] missing text field");
     }
 }

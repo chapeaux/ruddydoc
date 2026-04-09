@@ -1224,6 +1224,7 @@ impl DocumentBackend for PptxBackend {
             format: InputFormat::Pptx,
             file_size,
             page_count: Some(page_count),
+            language: None,
         })
     }
 }

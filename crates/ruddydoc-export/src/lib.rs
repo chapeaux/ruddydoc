@@ -1253,4 +1253,141 @@ fn main() {
         );
         Ok(())
     }
+
+    // -----------------------------------------------------------------
+    // Language-aware export tests
+    // -----------------------------------------------------------------
+
+    fn setup_doc_with_language(lang: &str) -> ruddydoc_core::Result<(OxigraphStore, String)> {
+        let (store, doc_graph) = setup_test_doc()?;
+        // Set rdoc:language on the document node
+        let sparql = format!(
+            "SELECT ?doc WHERE {{ \
+               GRAPH <{doc_graph}> {{ \
+                 ?doc a <{}> \
+               }} \
+             }} LIMIT 1",
+            ruddydoc_ontology::iri(ruddydoc_ontology::CLASS_DOCUMENT),
+        );
+        let result = store.query_to_json(&sparql)?;
+        let doc_iri = result
+            .as_array()
+            .and_then(|rows| rows.first())
+            .and_then(|row| row.get("doc"))
+            .and_then(|v| v.as_str())
+            .expect("doc IRI");
+        let doc_iri_clean = doc_iri.trim_start_matches('<').trim_end_matches('>');
+        store.insert_literal(
+            doc_iri_clean,
+            &ruddydoc_ontology::iri(ruddydoc_ontology::PROP_LANGUAGE),
+            lang,
+            "string",
+            &doc_graph,
+        )?;
+        Ok((store, doc_graph))
+    }
+
+    #[test]
+    fn json_export_includes_language() -> ruddydoc_core::Result<()> {
+        let (store, doc_graph) = setup_doc_with_language("es")?;
+        let exporter = JsonExporter;
+        let json_str = exporter.export(&store, &doc_graph)?;
+        let json: serde_json::Value = serde_json::from_str(&json_str)?;
+
+        assert_eq!(
+            json.get("language").and_then(|v| v.as_str()),
+            Some("es"),
+            "JSON output should include language field"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn json_export_omits_language_when_absent() -> ruddydoc_core::Result<()> {
+        let (store, doc_graph) = setup_test_doc()?;
+        let exporter = JsonExporter;
+        let json_str = exporter.export(&store, &doc_graph)?;
+        let json: serde_json::Value = serde_json::from_str(&json_str)?;
+
+        assert!(
+            json.get("language").is_none(),
+            "JSON output should not include language when absent"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn jsonld_export_includes_in_language() -> ruddydoc_core::Result<()> {
+        let (store, doc_graph) = setup_doc_with_language("de")?;
+        let exporter = JsonLdExporter;
+        let jsonld_str = exporter.export(&store, &doc_graph)?;
+        let json: serde_json::Value = serde_json::from_str(&jsonld_str)?;
+
+        assert_eq!(
+            json.get("schema:inLanguage").and_then(|v| v.as_str()),
+            Some("de"),
+            "JSON-LD output should include schema:inLanguage"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn html_export_uses_language_from_graph() -> ruddydoc_core::Result<()> {
+        let (store, doc_graph) = setup_doc_with_language("ja")?;
+        let exporter = HtmlExporter;
+        let html = exporter.export(&store, &doc_graph)?;
+
+        assert!(
+            html.contains("<html lang=\"ja\">"),
+            "HTML should use language from graph, got: {}",
+            &html[..200.min(html.len())]
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn html_export_defaults_to_en() -> ruddydoc_core::Result<()> {
+        let (store, doc_graph) = setup_test_doc()?;
+        let exporter = HtmlExporter;
+        let html = exporter.export(&store, &doc_graph)?;
+
+        assert!(
+            html.contains("<html lang=\"en\">"),
+            "HTML should default to en when no language set"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn chunk_metadata_includes_language() -> ruddydoc_core::Result<()> {
+        let (store, doc_graph) = setup_doc_with_language("pt")?;
+        let options = ChunkOptions::default();
+        let chunks = chunk_document(&store, &doc_graph, &options)?;
+
+        assert!(!chunks.is_empty());
+        for chunk in &chunks {
+            assert_eq!(
+                chunk.metadata.language,
+                Some("pt".to_string()),
+                "chunk metadata should include language"
+            );
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn chunk_metadata_language_none_when_absent() -> ruddydoc_core::Result<()> {
+        let (store, doc_graph) = setup_test_doc()?;
+        let options = ChunkOptions::default();
+        let chunks = chunk_document(&store, &doc_graph, &options)?;
+
+        assert!(!chunks.is_empty());
+        for chunk in &chunks {
+            assert_eq!(
+                chunk.metadata.language, None,
+                "chunk metadata language should be None when not set"
+            );
+        }
+        Ok(())
+    }
 }

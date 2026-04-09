@@ -209,6 +209,7 @@ impl DocumentBackend for ImageBackend {
             format: InputFormat::Image,
             file_size,
             page_count: None,
+            language: None,
         })
     }
 }

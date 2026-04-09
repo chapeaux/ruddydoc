@@ -401,6 +401,7 @@ impl DocumentBackend for WebVttBackend {
             format: InputFormat::WebVtt,
             file_size,
             page_count: None,
+            language: None,
         })
     }
 }

@@ -344,6 +344,7 @@ impl DocumentBackend for MarkdownBackend {
             format: InputFormat::Markdown,
             file_size,
             page_count: None,
+            language: None,
         })
     }
 }

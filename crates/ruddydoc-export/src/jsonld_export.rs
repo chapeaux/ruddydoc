@@ -53,6 +53,8 @@ struct JsonLdDocument {
         skip_serializing_if = "Option::is_none"
     )]
     number_of_pages: Option<i64>,
+    #[serde(rename = "schema:inLanguage", skip_serializing_if = "Option::is_none")]
+    in_language: Option<String>,
     #[serde(rename = "rdoc:sourceFormat")]
     source_format: String,
     #[serde(rename = "rdoc:hasElement")]
@@ -71,6 +73,7 @@ impl DocumentExporter for JsonLdExporter {
         let date_published =
             query_optional_literal(store, doc_graph, "http://purl.org/dc/terms/date")?;
         let number_of_pages = query_page_count(store, doc_graph)?;
+        let in_language = query_optional_literal(store, doc_graph, &ont::iri(ont::PROP_LANGUAGE))?;
         let elements = query_elements(store, doc_graph)?;
 
         let doc = JsonLdDocument {
@@ -84,6 +87,7 @@ impl DocumentExporter for JsonLdExporter {
             author,
             date_published,
             number_of_pages,
+            in_language,
             source_format,
             has_element: elements,
         };

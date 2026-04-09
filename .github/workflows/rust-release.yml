@@ -46,7 +46,7 @@ jobs:
           echo "CXX_aarch64_unknown_linux_gnu=aarch64-linux-gnu-g++" >> "$GITHUB_ENV"
 
       - name: Build
-        run: cargo build --release --target ${{ matrix.target }} -p ruddydoc-cli
+        run: cargo build --release --target ${{ matrix.target }} -p ruddydoc
 
       - name: Strip binary (Linux)
         if: matrix.os == 'ubuntu-latest'
@@ -154,3 +154,47 @@ jobs:
           body: ${{ steps.changelog.outputs.changelog }}
           draft: false
           prerelease: false
+
+  publish:
+    name: Publish to crates.io
+    needs: release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Publish crates (dependency order)
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+        run: |
+          set -e
+          # Publish in dependency order (leaf crates first)
+          # Each publish waits a bit for crates.io index to update
+          for crate in \
+            ruddydoc-core \
+            ruddydoc-graph \
+            ruddydoc-ontology \
+            ruddydoc-models \
+            ruddydoc-backend-md \
+            ruddydoc-backend-html \
+            ruddydoc-backend-csv \
+            ruddydoc-backend-docx \
+            ruddydoc-backend-pdf \
+            ruddydoc-backend-latex \
+            ruddydoc-backend-pptx \
+            ruddydoc-backend-xlsx \
+            ruddydoc-backend-image \
+            ruddydoc-backend-xml \
+            ruddydoc-backend-webvtt \
+            ruddydoc-backend-asciidoc \
+            ruddydoc-pipeline \
+            ruddydoc-export \
+            ruddydoc-converter \
+            ruddydoc-server \
+            ruddydoc; do
+            echo "Publishing $crate..."
+            cargo publish -p "$crate" --allow-dirty || echo "WARN: $crate publish failed (may already exist)"
+            sleep 15
+          done

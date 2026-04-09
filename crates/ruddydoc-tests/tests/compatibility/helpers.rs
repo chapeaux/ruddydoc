@@ -3,8 +3,8 @@
 use ruddydoc_core::{DocumentBackend, DocumentExporter, DocumentSource, DocumentStore};
 use ruddydoc_graph::OxigraphStore;
 use ruddydoc_ontology as ont;
-use sha2::{Digest, Sha256};
 use serde_json::Value;
+use sha2::{Digest, Sha256};
 use std::path::Path;
 
 /// Parse a file and return the store and document graph IRI.
@@ -15,12 +15,23 @@ pub fn parse_file<B: DocumentBackend>(
 ) -> (OxigraphStore, String) {
     // Resolve path relative to workspace root
     let workspace_root = std::env::var("CARGO_MANIFEST_DIR")
-        .map(|p| std::path::PathBuf::from(p).parent().unwrap().parent().unwrap().to_path_buf())
+        .map(|p| {
+            std::path::PathBuf::from(p)
+                .parent()
+                .unwrap()
+                .parent()
+                .unwrap()
+                .to_path_buf()
+        })
         .unwrap_or_else(|_| std::env::current_dir().unwrap());
 
     let full_path = workspace_root.join(path.as_ref());
     let data = std::fs::read(&full_path).expect(&format!("failed to read file: {:?}", full_path));
-    parse_bytes(backend, full_path.file_name().unwrap().to_str().unwrap(), &data)
+    parse_bytes(
+        backend,
+        full_path.file_name().unwrap().to_str().unwrap(),
+        &data,
+    )
 }
 
 /// Parse bytes and return the store and document graph IRI.
@@ -188,7 +199,9 @@ pub fn validate_docling_json(json: &Value) -> Result<(), String> {
 
         // Type-specific validation
         if text["type"] == "section_header" && text.get("heading_level").is_none() {
-            return Err(format!("text[{i}] is section_header but missing 'heading_level'"));
+            return Err(format!(
+                "text[{i}] is section_header but missing 'heading_level'"
+            ));
         }
     }
 

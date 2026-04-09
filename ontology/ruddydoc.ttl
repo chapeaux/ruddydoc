@@ -588,6 +588,42 @@ rdoc:citationKey a rdf:Property ;
   rdfs:comment "The citation key used to reference this bibliographic entry (e.g., 'smith2024', '[1]')." .
 
 # =============================================================================
+# Translation group and normalization
+# =============================================================================
+
+rdoc:TranslationGroup a rdfs:Class ;
+  rdfs:label "Translation Group" ;
+  rdfs:comment "A group of documents that are translations of the same content." .
+
+rdoc:hasTranslation a rdf:Property ;
+  rdfs:domain rdoc:TranslationGroup ;
+  rdfs:range rdoc:Document ;
+  rdfs:label "has translation" .
+
+rdoc:translationGroup a rdf:Property ;
+  rdfs:domain rdoc:Document ;
+  rdfs:range rdoc:TranslationGroup ;
+  rdfs:label "translation group" .
+
+rdoc:normalizedText a rdf:Property ;
+  rdfs:domain rdoc:TextElement ;
+  rdfs:range xsd:string ;
+  rdfs:label "normalized text" ;
+  rdfs:comment "ASCII-folded version of textContent with diacritics removed for accent-insensitive search." .
+
+rdoc:normalizedCellText a rdf:Property ;
+  rdfs:domain rdoc:TableCell ;
+  rdfs:range xsd:string ;
+  rdfs:label "normalized cell text" ;
+  rdfs:comment "ASCII-folded version of cellText with diacritics removed." .
+
+rdoc:elementLanguage a rdf:Property ;
+  rdfs:domain rdoc:DocumentElement ;
+  rdfs:range xsd:string ;
+  rdfs:label "element language" ;
+  rdfs:comment "BCP 47 language tag for this element, when different from document language." .
+
+# =============================================================================
 # Schema.org bridge -- explicit equivalences for JSON-LD export
 # =============================================================================
 #

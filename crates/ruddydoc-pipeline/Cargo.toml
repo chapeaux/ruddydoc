@@ -17,6 +17,7 @@ ruddydoc-models = { workspace = true, default-features = false }
 rayon = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
+unicode-normalization = { workspace = true }
 
 [dev-dependencies]
 ruddydoc-graph = { workspace = true }

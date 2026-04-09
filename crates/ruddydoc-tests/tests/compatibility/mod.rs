@@ -5,11 +5,11 @@
 //!
 //! Run with: `cargo test --test compatibility`
 
+mod export_validation;
 mod helpers;
 mod roundtrip;
-mod export_validation;
-mod sparql;
 mod schema;
+mod sparql;
 
 // Re-export helpers for use in sub-modules
 pub use helpers::*;

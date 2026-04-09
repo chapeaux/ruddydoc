@@ -15,6 +15,8 @@ pub struct JsonExporter;
 struct DoclingJson {
     name: String,
     source_format: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    language: Option<String>,
     texts: Vec<TextItem>,
     tables: Vec<TableItem>,
     pictures: Vec<PictureItem>,
@@ -65,6 +67,7 @@ impl DocumentExporter for JsonExporter {
     fn export(&self, store: &dyn DocumentStore, doc_graph: &str) -> ruddydoc_core::Result<String> {
         let name = query_document_name(store, doc_graph)?;
         let source_format = query_source_format(store, doc_graph)?;
+        let language = query_document_language(store, doc_graph)?;
         let texts = query_texts(store, doc_graph)?;
         let tables = query_tables(store, doc_graph)?;
         let pictures = query_pictures(store, doc_graph)?;
@@ -72,6 +75,7 @@ impl DocumentExporter for JsonExporter {
         let doc = DoclingJson {
             name,
             source_format,
+            language,
             texts,
             tables,
             pictures,
@@ -133,6 +137,29 @@ fn query_document_name(
         .map(clean_literal)
         .unwrap_or_else(|| "unknown".to_string());
     Ok(name)
+}
+
+fn query_document_language(
+    store: &dyn DocumentStore,
+    doc_graph: &str,
+) -> ruddydoc_core::Result<Option<String>> {
+    let sparql = format!(
+        "SELECT ?lang WHERE {{ \
+           GRAPH <{doc_graph}> {{ \
+             ?doc a <{doc_class}>. \
+             ?doc <{language}> ?lang \
+           }} \
+         }} LIMIT 1",
+        doc_class = ont::iri(ont::CLASS_DOCUMENT),
+        language = ont::iri(ont::PROP_LANGUAGE),
+    );
+    let result = store.query_to_json(&sparql)?;
+    Ok(result
+        .as_array()
+        .and_then(|rows| rows.first())
+        .and_then(|row| row.get("lang"))
+        .and_then(|v| v.as_str())
+        .map(clean_literal))
 }
 
 fn query_source_format(

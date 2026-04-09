@@ -556,5 +556,23 @@ rdoc:KeyValueItemShape a sh:NodeShape ;
   ] .
 
 # =============================================================================
+# TranslationGroupShape -- validates rdoc:TranslationGroup instances
+# =============================================================================
+
+rdoc:TranslationGroupShape a sh:NodeShape ;
+  sh:targetClass rdoc:TranslationGroup ;
+  rdfs:label "Translation Group Shape" ;
+  rdfs:comment "Validates that a TranslationGroup links to at least one document." ;
+
+  # Must have at least one translation
+  sh:property [
+    sh:path rdoc:hasTranslation ;
+    sh:minCount 1 ;
+    sh:class rdoc:Document ;
+    sh:name "has translation" ;
+    sh:message "A translation group must link to at least one document."
+  ] .
+
+# =============================================================================
 # End of SHACL Shapes
 # =============================================================================

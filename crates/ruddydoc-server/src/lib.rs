@@ -115,8 +115,11 @@ mod tests {
 
     #[tokio::test]
     async fn test_convert_markdown_file() {
-        // Write a temp markdown file
-        let tmp = std::env::temp_dir().join("ruddydoc_test_convert.md");
+        // Write a temp markdown file with a unique name to avoid races
+        let tmp = std::env::temp_dir().join(format!(
+            "ruddydoc_test_convert_{}.md",
+            std::process::id()
+        ));
         std::fs::write(&tmp, "# Test\n\nHello world.\n").unwrap();
 
         let app = test_app();
@@ -160,7 +163,13 @@ mod tests {
 
     /// Helper: convert a document and return its ID using a shared state.
     async fn convert_test_doc(state: &Arc<ServerState>) -> String {
-        let tmp = std::env::temp_dir().join("ruddydoc_test_lifecycle.md");
+        use std::sync::atomic::{AtomicU64, Ordering};
+        static COUNTER: AtomicU64 = AtomicU64::new(0);
+        let n = COUNTER.fetch_add(1, Ordering::Relaxed);
+        let tmp = std::env::temp_dir().join(format!(
+            "ruddydoc_test_lifecycle_{}_{n}.md",
+            std::process::id()
+        ));
         std::fs::write(
             &tmp,
             "# Document Title\n\nFirst paragraph.\n\n## Section\n\nSecond paragraph.\n\n- Item A\n- Item B\n",

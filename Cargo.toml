@@ -33,27 +33,27 @@ repository = "https://github.com/chapeaux/ruddydoc"
 homepage = "https://github.com/chapeaux/ruddydoc"
 
 [workspace.dependencies]
-# Internal crates
-ruddydoc-core = { path = "crates/ruddydoc-core" }
-ruddydoc-graph = { path = "crates/ruddydoc-graph" }
-ruddydoc-ontology = { path = "crates/ruddydoc-ontology" }
-ruddydoc-converter = { path = "crates/ruddydoc-converter" }
-ruddydoc-pipeline = { path = "crates/ruddydoc-pipeline" }
-ruddydoc-models = { path = "crates/ruddydoc-models", default-features = false }
-ruddydoc-export = { path = "crates/ruddydoc-export" }
-ruddydoc-backend-md = { path = "crates/ruddydoc-backend-md" }
-ruddydoc-backend-html = { path = "crates/ruddydoc-backend-html" }
-ruddydoc-backend-csv = { path = "crates/ruddydoc-backend-csv" }
-ruddydoc-backend-docx = { path = "crates/ruddydoc-backend-docx" }
-ruddydoc-backend-pdf = { path = "crates/ruddydoc-backend-pdf" }
-ruddydoc-backend-latex = { path = "crates/ruddydoc-backend-latex" }
-ruddydoc-backend-pptx = { path = "crates/ruddydoc-backend-pptx" }
-ruddydoc-backend-xlsx = { path = "crates/ruddydoc-backend-xlsx" }
-ruddydoc-backend-image = { path = "crates/ruddydoc-backend-image" }
-ruddydoc-backend-xml = { path = "crates/ruddydoc-backend-xml" }
-ruddydoc-backend-webvtt = { path = "crates/ruddydoc-backend-webvtt" }
-ruddydoc-backend-asciidoc = { path = "crates/ruddydoc-backend-asciidoc" }
-ruddydoc-server = { path = "crates/ruddydoc-server" }
+# Internal crates (version required for crates.io publishing)
+ruddydoc-core = { version = "0.1.0", path = "crates/ruddydoc-core" }
+ruddydoc-graph = { version = "0.1.0", path = "crates/ruddydoc-graph" }
+ruddydoc-ontology = { version = "0.1.0", path = "crates/ruddydoc-ontology" }
+ruddydoc-converter = { version = "0.1.0", path = "crates/ruddydoc-converter" }
+ruddydoc-pipeline = { version = "0.1.0", path = "crates/ruddydoc-pipeline" }
+ruddydoc-models = { version = "0.1.0", path = "crates/ruddydoc-models", default-features = false }
+ruddydoc-export = { version = "0.1.0", path = "crates/ruddydoc-export" }
+ruddydoc-backend-md = { version = "0.1.0", path = "crates/ruddydoc-backend-md" }
+ruddydoc-backend-html = { version = "0.1.0", path = "crates/ruddydoc-backend-html" }
+ruddydoc-backend-csv = { version = "0.1.0", path = "crates/ruddydoc-backend-csv" }
+ruddydoc-backend-docx = { version = "0.1.0", path = "crates/ruddydoc-backend-docx" }
+ruddydoc-backend-pdf = { version = "0.1.0", path = "crates/ruddydoc-backend-pdf" }
+ruddydoc-backend-latex = { version = "0.1.0", path = "crates/ruddydoc-backend-latex" }
+ruddydoc-backend-pptx = { version = "0.1.0", path = "crates/ruddydoc-backend-pptx" }
+ruddydoc-backend-xlsx = { version = "0.1.0", path = "crates/ruddydoc-backend-xlsx" }
+ruddydoc-backend-image = { version = "0.1.0", path = "crates/ruddydoc-backend-image" }
+ruddydoc-backend-xml = { version = "0.1.0", path = "crates/ruddydoc-backend-xml" }
+ruddydoc-backend-webvtt = { version = "0.1.0", path = "crates/ruddydoc-backend-webvtt" }
+ruddydoc-backend-asciidoc = { version = "0.1.0", path = "crates/ruddydoc-backend-asciidoc" }
+ruddydoc-server = { version = "0.1.0", path = "crates/ruddydoc-server" }
 
 # External dependencies (shared versions)
 oxigraph = "0.5"
@@ -73,6 +73,8 @@ ort = "2.0.0-rc.12"
 rayon = "1"
 tokio = { version = "1", features = ["full"] }
 criterion = { version = "0.5", features = ["html_reports"] }
+unicode-normalization = "0.1"
+toml = "0.8"
 
 [profile.release]
 lto = true

@@ -76,6 +76,7 @@ pub const CLASS_PAGE_HEADER: &str = "PageHeader";
 pub const CLASS_PAGE_FOOTER: &str = "PageFooter";
 pub const CLASS_BOUNDING_BOX: &str = "BoundingBox";
 pub const CLASS_PROVENANCE: &str = "Provenance";
+pub const CLASS_TRANSLATION_GROUP: &str = "TranslationGroup";
 
 // -----------------------------------------------------------------------
 // Property constants (local names)
@@ -158,6 +159,15 @@ pub const PROP_PROCESSING_DATE: &str = "processingDate";
 pub const PROP_REFERS_TO: &str = "refersTo";
 pub const PROP_LABEL_ID: &str = "labelId";
 pub const PROP_CITATION_KEY: &str = "citationKey";
+
+// Translation group properties
+pub const PROP_HAS_TRANSLATION: &str = "hasTranslation";
+pub const PROP_TRANSLATION_GROUP: &str = "translationGroup";
+
+// Normalization and per-element language properties
+pub const PROP_NORMALIZED_TEXT: &str = "normalizedText";
+pub const PROP_NORMALIZED_CELL_TEXT: &str = "normalizedCellText";
+pub const PROP_ELEMENT_LANGUAGE: &str = "elementLanguage";
 
 // -----------------------------------------------------------------------
 // Ontology loading
@@ -355,6 +365,12 @@ pub fn load_ontology(store: &dyn DocumentStore) -> ruddydoc_core::Result<()> {
             None,
             "Provenance",
             "Metadata about how an element was detected.",
+        ),
+        (
+            CLASS_TRANSLATION_GROUP,
+            None,
+            "Translation Group",
+            "Links language variant documents together.",
         ),
     ];
 
@@ -787,6 +803,44 @@ pub fn load_ontology(store: &dyn DocumentStore) -> ruddydoc_core::Result<()> {
             "citation key",
             "Citation key for a reference.",
         ),
+        // Translation group properties
+        (
+            PROP_HAS_TRANSLATION,
+            CLASS_TRANSLATION_GROUP,
+            CLASS_DOCUMENT,
+            "has translation",
+            "Links a translation group to a language variant document.",
+        ),
+        (
+            PROP_TRANSLATION_GROUP,
+            CLASS_DOCUMENT,
+            CLASS_TRANSLATION_GROUP,
+            "translation group",
+            "Links a document to its translation group.",
+        ),
+        // Normalization properties
+        (
+            PROP_NORMALIZED_TEXT,
+            CLASS_TEXT_ELEMENT,
+            "xsd:string",
+            "normalized text",
+            "ASCII-folded version of textContent.",
+        ),
+        (
+            PROP_NORMALIZED_CELL_TEXT,
+            CLASS_TABLE_CELL,
+            "xsd:string",
+            "normalized cell text",
+            "ASCII-folded version of cellText.",
+        ),
+        // Per-element language override
+        (
+            PROP_ELEMENT_LANGUAGE,
+            CLASS_DOCUMENT_ELEMENT,
+            "xsd:string",
+            "element language",
+            "BCP 47 language tag for this element.",
+        ),
     ];
 
     for (name, domain, range, label, comment) in properties {
@@ -881,6 +935,65 @@ mod tests {
         let result = store.query_to_json(&sparql)?;
         assert_eq!(result, serde_json::Value::Bool(true));
         Ok(())
+    }
+
+    #[test]
+    fn ontology_has_translation_group_class() -> ruddydoc_core::Result<()> {
+        let store = OxigraphStore::new()?;
+        load_ontology(&store)?;
+
+        let rdf_type = rdf_iri("type");
+        let rdfs_class = rdfs_iri("Class");
+        let tg_iri = iri(CLASS_TRANSLATION_GROUP);
+
+        let sparql = format!(
+            "ASK {{ GRAPH <{ONTOLOGY_GRAPH}> {{ <{tg_iri}> <{rdf_type}> <{rdfs_class}> }} }}"
+        );
+        let result = store.query_to_json(&sparql)?;
+        assert_eq!(result, serde_json::Value::Bool(true));
+        Ok(())
+    }
+
+    #[test]
+    fn ontology_has_normalized_text_property() -> ruddydoc_core::Result<()> {
+        let store = OxigraphStore::new()?;
+        load_ontology(&store)?;
+
+        let rdf_type = rdf_iri("type");
+        let rdf_property = rdf_iri("Property");
+        let nt_iri = iri(PROP_NORMALIZED_TEXT);
+
+        let sparql = format!(
+            "ASK {{ GRAPH <{ONTOLOGY_GRAPH}> {{ <{nt_iri}> <{rdf_type}> <{rdf_property}> }} }}"
+        );
+        let result = store.query_to_json(&sparql)?;
+        assert_eq!(result, serde_json::Value::Bool(true));
+        Ok(())
+    }
+
+    #[test]
+    fn ontology_has_element_language_property() -> ruddydoc_core::Result<()> {
+        let store = OxigraphStore::new()?;
+        load_ontology(&store)?;
+
+        let rdf_type = rdf_iri("type");
+        let rdf_property = rdf_iri("Property");
+        let el_iri = iri(PROP_ELEMENT_LANGUAGE);
+
+        let sparql = format!(
+            "ASK {{ GRAPH <{ONTOLOGY_GRAPH}> {{ <{el_iri}> <{rdf_type}> <{rdf_property}> }} }}"
+        );
+        let result = store.query_to_json(&sparql)?;
+        assert_eq!(result, serde_json::Value::Bool(true));
+        Ok(())
+    }
+
+    #[test]
+    fn ontology_ttl_contains_new_classes() {
+        let ttl = ontology_turtle();
+        assert!(ttl.contains("rdoc:TranslationGroup"));
+        assert!(ttl.contains("rdoc:normalizedText"));
+        assert!(ttl.contains("rdoc:elementLanguage"));
     }
 
     #[test]
