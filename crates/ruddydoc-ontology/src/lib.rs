@@ -15,6 +15,11 @@ pub const NAMESPACE: &str = "https://ruddydoc.chapeaux.io/ontology#";
 /// Named graph for the ontology itself.
 pub const ONTOLOGY_GRAPH: &str = "urn:ruddydoc:ontology";
 
+/// Named graph for the SHACL shapes parsed from the ontology Turtle file.
+/// Separate from `ONTOLOGY_GRAPH` since shapes are loaded via Turtle parsing
+/// (`SparqStore::load_shapes_turtle`), not the programmatic loader below.
+pub const SHAPES_GRAPH: &str = "urn:ruddydoc:shapes";
+
 /// Standard RDF namespace.
 pub const RDF: &str = "http://www.w3.org/1999/02/22-rdf-syntax-ns#";
 
@@ -77,6 +82,7 @@ pub const CLASS_PAGE_FOOTER: &str = "PageFooter";
 pub const CLASS_BOUNDING_BOX: &str = "BoundingBox";
 pub const CLASS_PROVENANCE: &str = "Provenance";
 pub const CLASS_TRANSLATION_GROUP: &str = "TranslationGroup";
+pub const CLASS_CHUNK: &str = "Chunk";
 
 // -----------------------------------------------------------------------
 // Property constants (local names)
@@ -168,6 +174,10 @@ pub const PROP_TRANSLATION_GROUP: &str = "translationGroup";
 pub const PROP_NORMALIZED_TEXT: &str = "normalizedText";
 pub const PROP_NORMALIZED_CELL_TEXT: &str = "normalizedCellText";
 pub const PROP_ELEMENT_LANGUAGE: &str = "elementLanguage";
+
+// RAG chunk properties
+pub const PROP_CHUNK_TEXT: &str = "chunkText";
+pub const PROP_CHUNK_INDEX: &str = "chunkIndex";
 
 // -----------------------------------------------------------------------
 // Ontology loading
@@ -371,6 +381,12 @@ pub fn load_ontology(store: &dyn DocumentStore) -> ruddydoc_core::Result<()> {
             None,
             "Translation Group",
             "Links language variant documents together.",
+        ),
+        (
+            CLASS_CHUNK,
+            None,
+            "Chunk",
+            "A structure-aware text chunk of a document, produced for RAG retrieval. Embedded via an external provider and indexed for semantic similarity search.",
         ),
     ];
 
@@ -841,6 +857,25 @@ pub fn load_ontology(store: &dyn DocumentStore) -> ruddydoc_core::Result<()> {
             "element language",
             "BCP 47 language tag for this element.",
         ),
+        // RAG chunk properties
+        (
+            PROP_CHUNK_TEXT,
+            CLASS_CHUNK,
+            "xsd:string",
+            "chunk text",
+            "The chunk's text content, as embedded.",
+        ),
+        (
+            PROP_CHUNK_INDEX,
+            CLASS_CHUNK,
+            // NOTE: matches what insert_literal's "integer" shortcut actually
+            // produces (xsd:integer), not the more precise
+            // xsd:nonNegativeInteger -- see the Phase 3 SHACL shapes' note
+            // on this same drift for rdoc:readingOrder.
+            "xsd:integer",
+            "chunk index",
+            "The 0-based position of this chunk among the document's chunks.",
+        ),
     ];
 
     for (name, domain, range, label, comment) in properties {
@@ -869,6 +904,21 @@ pub fn load_ontology(store: &dyn DocumentStore) -> ruddydoc_core::Result<()> {
     Ok(())
 }
 
+/// Load the SHACL shapes declared in the bundled ontology Turtle file into
+/// the store's shapes named graph (`SHAPES_GRAPH`).
+///
+/// Unlike [`load_ontology`], this parses the actual Turtle text (via
+/// `SparqStore::load_shapes_turtle`) rather than reconstructing triples
+/// programmatically -- SHACL's nested blank-node property shapes
+/// (`sh:property [ ... ]`) would be far more error-prone to hand-transcribe
+/// than the simple class/property triples `load_ontology` handles. This
+/// pulls in the whole ontology file's triples (classes, properties, shapes
+/// alike) into the shapes graph; the SHACL engine only interprets `sh:*`
+/// predicates, so the non-shape triples alongside them are harmless.
+pub fn load_shapes(sparq: &ruddydoc_graph::SparqStore) -> ruddydoc_core::Result<()> {
+    sparq.load_shapes_turtle(SHAPES_GRAPH, ONTOLOGY_TTL)
+}
+
 /// Return the raw Turtle source of the bundled ontology.
 ///
 /// Useful for exporting the ontology itself.
@@ -879,7 +929,7 @@ pub fn ontology_turtle() -> &'static str {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ruddydoc_graph::OxigraphStore;
+    use ruddydoc_graph::SparqStore;
 
     #[test]
     fn ontology_ttl_is_bundled() {
@@ -891,7 +941,7 @@ mod tests {
 
     #[test]
     fn load_ontology_inserts_triples() -> ruddydoc_core::Result<()> {
-        let store = OxigraphStore::new()?;
+        let store = SparqStore::new()?;
         load_ontology(&store)?;
 
         let count = store.triple_count_in(ONTOLOGY_GRAPH)?;
@@ -904,8 +954,33 @@ mod tests {
     }
 
     #[test]
+    fn load_shapes_parses_and_validates() -> ruddydoc_core::Result<()> {
+        let store = SparqStore::new()?;
+        load_shapes(&store)?;
+
+        let count = store.triple_count_in(SHAPES_GRAPH)?;
+        assert!(count > 0, "expected shapes graph to be populated");
+
+        // A Document with neither fileName nor sourceFormat should violate
+        // DocumentShape (both are minCount 1).
+        let doc = "urn:ruddydoc:test:shapes_doc";
+        store.insert_triple_into(
+            "urn:ruddydoc:doc:x",
+            &rdf_iri("type"),
+            &iri(CLASS_DOCUMENT),
+            doc,
+        )?;
+        let report = store.validate_shacl(SHAPES_GRAPH, doc)?;
+        assert_eq!(report["conforms"], false);
+        let results = report["results"].as_array().expect("expected array");
+        assert!(results.len() >= 2, "expected violations for both missing properties");
+
+        Ok(())
+    }
+
+    #[test]
     fn ontology_has_document_class() -> ruddydoc_core::Result<()> {
-        let store = OxigraphStore::new()?;
+        let store = SparqStore::new()?;
         load_ontology(&store)?;
 
         let rdf_type = rdf_iri("type");
@@ -922,7 +997,7 @@ mod tests {
 
     #[test]
     fn ontology_has_text_content_property() -> ruddydoc_core::Result<()> {
-        let store = OxigraphStore::new()?;
+        let store = SparqStore::new()?;
         load_ontology(&store)?;
 
         let rdf_type = rdf_iri("type");
@@ -939,7 +1014,7 @@ mod tests {
 
     #[test]
     fn ontology_has_translation_group_class() -> ruddydoc_core::Result<()> {
-        let store = OxigraphStore::new()?;
+        let store = SparqStore::new()?;
         load_ontology(&store)?;
 
         let rdf_type = rdf_iri("type");
@@ -956,7 +1031,7 @@ mod tests {
 
     #[test]
     fn ontology_has_normalized_text_property() -> ruddydoc_core::Result<()> {
-        let store = OxigraphStore::new()?;
+        let store = SparqStore::new()?;
         load_ontology(&store)?;
 
         let rdf_type = rdf_iri("type");
@@ -973,7 +1048,7 @@ mod tests {
 
     #[test]
     fn ontology_has_element_language_property() -> ruddydoc_core::Result<()> {
-        let store = OxigraphStore::new()?;
+        let store = SparqStore::new()?;
         load_ontology(&store)?;
 
         let rdf_type = rdf_iri("type");

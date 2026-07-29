@@ -6,7 +6,7 @@
 //!
 //! # Architecture
 //!
-//! The server holds an in-memory Oxigraph store shared by all converted
+//! The server holds an in-memory Sparq store shared by all converted
 //! documents. Each document lives in its own named graph. The
 //! [`state::ServerState`] struct manages the store, converter, and
 //! document registry.
@@ -33,6 +33,13 @@ pub async fn start_http_server(port: u16) -> ruddydoc_core::Result<()> {
     tracing::info!(port = port, "RuddyDoc server listening");
     axum::serve(listener, app).await?;
     Ok(())
+}
+
+/// Start the MCP server on stdio (stdin/stdout).
+///
+/// This blocks until stdin is closed.
+pub async fn start_mcp_stdio() -> ruddydoc_core::Result<()> {
+    mcp::run_stdio().await
 }
 
 #[cfg(test)]
@@ -116,10 +123,8 @@ mod tests {
     #[tokio::test]
     async fn test_convert_markdown_file() {
         // Write a temp markdown file with a unique name to avoid races
-        let tmp = std::env::temp_dir().join(format!(
-            "ruddydoc_test_convert_{}.md",
-            std::process::id()
-        ));
+        let tmp =
+            std::env::temp_dir().join(format!("ruddydoc_test_convert_{}.md", std::process::id()));
         std::fs::write(&tmp, "# Test\n\nHello world.\n").unwrap();
 
         let app = test_app();
@@ -299,6 +304,189 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn test_introspect_list_classes_and_prefixes() {
+        let state = Arc::new(ServerState::new().unwrap());
+        let doc_id = convert_test_doc(&state).await;
+
+        let introspection = state.introspect_document(&doc_id).await.unwrap();
+        assert!(introspection["triples"].as_u64().unwrap() > 0);
+
+        let classes = state.list_classes(&doc_id).await.unwrap();
+        let classes = classes.as_array().unwrap();
+        assert!(!classes.is_empty());
+        // The test fixture has headings, paragraphs, and a list -- confirm at
+        // least one recognizable rdoc class shows up, not just "some class".
+        assert!(
+            classes
+                .iter()
+                .any(|c| c["class"].as_str().unwrap_or("").contains("Paragraph"))
+        );
+
+        let prefixes = state.list_prefixes(&doc_id).await.unwrap();
+        let prefixes = prefixes.as_array().unwrap();
+        assert!(!prefixes.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_convert_attaches_and_revalidates_shacl_report() {
+        let state = Arc::new(ServerState::new().unwrap());
+        let doc_id = convert_test_doc(&state).await;
+
+        // convert_file's initial report, carried on the DocumentRecord.
+        let docs = state.documents.read().await;
+        let record = docs.get(&doc_id).unwrap().clone();
+        drop(docs);
+        let initial = record.validation.expect("expected a validation report");
+        assert_eq!(initial["conforms"], true, "report: {initial}");
+
+        // validate_document re-runs it on demand and agrees.
+        let revalidated = state.validate_document(&doc_id).await.unwrap();
+        assert_eq!(revalidated["conforms"], true, "report: {revalidated}");
+    }
+
+    #[tokio::test]
+    async fn test_search_text() {
+        let state = Arc::new(ServerState::new().unwrap());
+        let doc_id = convert_test_doc(&state).await;
+
+        // Fixture text includes "First paragraph." / "Second paragraph."
+        let hits = state.search_text(&doc_id, "paragraph", 10).await.unwrap();
+        let hits = hits.as_array().unwrap();
+        assert_eq!(hits.len(), 2, "hits: {hits:?}");
+        assert!(hits.iter().all(|h| h["text"].as_str().unwrap_or("").contains("paragraph")));
+
+        let no_hits = state
+            .search_text(&doc_id, "nonexistentterm", 10)
+            .await
+            .unwrap();
+        assert!(no_hits.as_array().unwrap().is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_canonicalize_document() {
+        let state = Arc::new(ServerState::new().unwrap());
+        let doc_id = convert_test_doc(&state).await;
+
+        let hash = state.canonicalize_document(&doc_id).await.unwrap();
+        assert_eq!(hash.len(), 64, "expected a hex SHA-256 digest: {hash}");
+        assert!(hash.chars().all(|c| c.is_ascii_hexdigit()));
+
+        // Stable across repeated calls against an unchanged graph.
+        let hash_again = state.canonicalize_document(&doc_id).await.unwrap();
+        assert_eq!(hash, hash_again);
+    }
+
+    /// Deterministic fake embedder for tests: no network calls, and
+    /// identical text always produces an identical vector (so a query using
+    /// a chunk's own exact text should retrieve it with similarity ~1.0).
+    struct FakeEmbeddingProvider;
+
+    impl ruddydoc_models::EmbeddingProvider for FakeEmbeddingProvider {
+        fn embed(&self, texts: &[String]) -> ruddydoc_core::Result<Vec<Vec<f32>>> {
+            Ok(texts
+                .iter()
+                .map(|text| {
+                    let mut v = vec![0.0f32; 4];
+                    for (i, b) in text.bytes().enumerate() {
+                        v[i % 4] += b as f32;
+                    }
+                    v
+                })
+                .collect())
+        }
+    }
+
+    fn state_with_fake_embedder() -> Arc<ServerState> {
+        let mut state = ServerState::new().unwrap();
+        state.embedding_provider = Some(Arc::new(FakeEmbeddingProvider));
+        Arc::new(state)
+    }
+
+    #[tokio::test]
+    async fn test_embed_document_requires_configured_provider() {
+        let state = Arc::new(ServerState::new().unwrap());
+        let doc_id = convert_test_doc(&state).await;
+        // No RUDDYDOC_EMBEDDING_URL set in the test environment.
+        let result = state.embed_document(&doc_id, 512).await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_embed_and_semantic_search() {
+        let state = state_with_fake_embedder();
+        let doc_id = convert_test_doc(&state).await;
+
+        let count = state.embed_document(&doc_id, 512).await.unwrap();
+        assert!(count > 0);
+
+        // Fetch an actual chunk's exact indexed text via SPARQL, rather than
+        // assuming the fixture's exact chunking/heading-breadcrumb shape.
+        let ont = ruddydoc_ontology::NAMESPACE;
+        let sparql = format!("SELECT ?text WHERE {{ ?c <{ont}chunkText> ?text }} LIMIT 1");
+        let rows = state.query_document(&doc_id, &sparql).await.unwrap();
+        let raw_text = rows[0]["text"].as_str().unwrap();
+        // query_to_json renders literals as `"value"` -- strip the quotes to
+        // get back the exact chunk text for the semantic_search query.
+        let chunk_text = raw_text.trim_start_matches('"').trim_end_matches('"');
+
+        // Querying with a chunk's own exact text should retrieve that exact
+        // chunk first (identical text -> identical fake-embedded vector ->
+        // cosine similarity 1.0, the maximum possible).
+        let results = state.semantic_search(&doc_id, chunk_text, 3).await.unwrap();
+        let results = results.as_array().unwrap();
+        assert!(!results.is_empty());
+        assert!(results[0]["score"].as_f64().unwrap() > 0.99, "results: {results:?}");
+    }
+
+    #[tokio::test]
+    async fn test_semantic_search_requires_configured_provider() {
+        let state = Arc::new(ServerState::new().unwrap());
+        let doc_id = convert_test_doc(&state).await;
+        let result = state.semantic_search(&doc_id, "anything", 3).await;
+        assert!(result.is_err());
+    }
+
+    /// Scripted fake LLM for tests: always returns a fixed, valid SPARQL
+    /// query -- no network calls, no repair round needed.
+    struct FakeLlmProvider;
+
+    impl ruddydoc_models::LlmProvider for FakeLlmProvider {
+        fn complete(&self, _prompt: &str) -> ruddydoc_core::Result<String> {
+            let ont = ruddydoc_ontology::NAMESPACE;
+            Ok(format!("SELECT ?p WHERE {{ ?p a <{ont}Paragraph> }}"))
+        }
+    }
+
+    fn state_with_fake_llm() -> Arc<ServerState> {
+        let mut state = ServerState::new().unwrap();
+        state.llm_provider = Some(Arc::new(FakeLlmProvider));
+        Arc::new(state)
+    }
+
+    #[tokio::test]
+    async fn test_ask_document_requires_configured_provider() {
+        let state = Arc::new(ServerState::new().unwrap());
+        let doc_id = convert_test_doc(&state).await;
+        let result = state.ask_document(&doc_id, "What paragraphs are there?").await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_ask_document_happy_path() {
+        let state = state_with_fake_llm();
+        let doc_id = convert_test_doc(&state).await;
+
+        // Fixture has "First paragraph." and "Second paragraph." (2 rdoc:Paragraph elements).
+        let answer = state
+            .ask_document(&doc_id, "What paragraphs are there?")
+            .await
+            .unwrap();
+        assert_eq!(answer["repairs"], 0, "answer: {answer}");
+        let rows = answer["result"].as_array().expect("expected array");
+        assert_eq!(rows.len(), 2, "answer: {answer}");
+    }
+
+    #[tokio::test]
     async fn test_list_elements() {
         let state = Arc::new(ServerState::new().unwrap());
         let doc_id = convert_test_doc(&state).await;
@@ -419,18 +607,8 @@ mod tests {
         assert_eq!(status, StatusCode::NOT_FOUND);
     }
 
-    // -----------------------------------------------------------------
-    // MCP tool schemas
-    // -----------------------------------------------------------------
-
-    #[test]
-    fn test_mcp_tool_schemas_valid() {
-        let schemas = mcp::McpToolDefinitions::tool_schemas();
-        assert_eq!(schemas.len(), 7);
-        for schema in &schemas {
-            assert!(schema.get("name").is_some());
-            assert!(schema.get("description").is_some());
-            assert!(schema.get("inputSchema").is_some());
-        }
-    }
+    // MCP tool schema coverage lives in mcp.rs's own test module
+    // (tool_schemas_are_valid_json, tool_schemas_have_expected_tools) --
+    // mcp's internals are private to that module, so there's no public
+    // entry point left here to duplicate that coverage against.
 }

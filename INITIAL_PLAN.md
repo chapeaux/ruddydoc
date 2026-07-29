@@ -1433,6 +1433,7 @@ Phase 1 has two parallel tracks:
 | 15 | Combined HTTP+MCP in single `ruddydoc-server` crate | Avoids the Python docling pattern of separate `docling-mcp` package. Single crate reduces maintenance and ensures tools and REST endpoints share the same state. Server crate is feature-gated in CLI to keep minimal builds fast. | 2026-04-07 |
 | 16 | VLM support via trait + HTTP API (not local-first) | ONNX Runtime VLM inference for a 258M parameter model is feasible but complex (requires tokenizer, beam search, autoregressive generation). HTTP API support is simpler, more flexible (works with any model server), and more immediately useful. Local ONNX VLM is a future enhancement, not a Phase 5 requirement. | 2026-04-07 |
 | 17 | Feature-gate VLM and server | `vlm-api` feature enables HTTP VLM support (adds `reqwest` dependency). `server` feature enables `ruddydoc-server` (adds `axum`, `rust-mcp-sdk`, `tower`). Default features include neither. This keeps the base binary small for users who only need CLI conversion. | 2026-04-07 |
+| 18 | Migrate the document store from Oxigraph to Sparq (supersedes #1) | Sparq replaces Oxigraph as the embedded RDF store / SPARQL engine (`ruddydoc-graph`). Pinned as a git dependency by commit hash (not yet published to any registry) -- see [LICENSES.md](LICENSES.md#special-consideration-sparq). Consequence: `cargo publish`/`cargo install ruddydoc` is unavailable until Sparq is registry-published; GitHub Releases, npm, Docker, and Homebrew remain the supported install paths. | 2026-07-28 |
 
 ---
 

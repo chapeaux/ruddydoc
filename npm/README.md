@@ -2,7 +2,7 @@
 
 Fast document conversion with embedded knowledge graph.
 
-RuddyDoc is a Rust rewrite of [docling](https://github.com/docling-project/docling) with an embedded Oxigraph RDF datastore for SPARQL-queryable document knowledge graphs.
+RuddyDoc is a Rust rewrite of [docling](https://github.com/docling-project/docling) with an embedded Sparq RDF datastore for SPARQL-queryable document knowledge graphs.
 
 ## Installation
 

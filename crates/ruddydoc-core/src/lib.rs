@@ -534,6 +534,12 @@ pub fn ontology_iri(term: &str) -> String {
     format!("https://ruddydoc.chapeaux.io/ontology#{term}")
 }
 
+/// Construct a PROV-O source-entity IRI for a conversion's input, from the
+/// same content hash used to build the document's own [`doc_iri`].
+pub fn source_iri(hash: &str) -> String {
+    format!("urn:ruddydoc:source:{hash}")
+}
+
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
@@ -584,6 +590,11 @@ mod tests {
             element_iri("abc123", "heading-0"),
             "urn:ruddydoc:doc:abc123/heading-0"
         );
+    }
+
+    #[test]
+    fn source_iri_format() {
+        assert_eq!(source_iri("abc123"), "urn:ruddydoc:source:abc123");
     }
 
     #[test]

@@ -10,6 +10,8 @@ description = "ONNX Runtime ML model integration for RuddyDoc"
 default = ["onnx"]
 onnx = ["dep:ort"]
 vlm-api = ["dep:reqwest"]
+embeddings-api = ["dep:reqwest"]
+llm-api = ["dep:reqwest"]
 
 [dependencies]
 ruddydoc-core = { workspace = true }

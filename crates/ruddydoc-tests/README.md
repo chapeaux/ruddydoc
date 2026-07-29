@@ -203,7 +203,7 @@ All issues are minor and under investigation.
 This crate depends on:
 
 - `ruddydoc-core` - Core types and traits
-- `ruddydoc-graph` - Oxigraph store
+- `ruddydoc-graph` - Sparq store
 - `ruddydoc-ontology` - Document ontology
 - `ruddydoc-export` - Export formats
 - `ruddydoc-backend-md` - Markdown backend

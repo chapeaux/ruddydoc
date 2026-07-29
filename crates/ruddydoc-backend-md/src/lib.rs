@@ -646,12 +646,12 @@ fn handle_end_tag(ctx: &mut ParseContext<'_>, tag: &TagEnd) -> ruddydoc_core::Re
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ruddydoc_graph::OxigraphStore;
+    use ruddydoc_graph::SparqStore;
 
     fn parse_markdown(
         markdown: &str,
-    ) -> ruddydoc_core::Result<(OxigraphStore, DocumentMeta, String)> {
-        let store = OxigraphStore::new()?;
+    ) -> ruddydoc_core::Result<(SparqStore, DocumentMeta, String)> {
+        let store = SparqStore::new()?;
         let backend = MarkdownBackend::new();
         let source = DocumentSource::Stream {
             name: "test.md".to_string(),

@@ -329,13 +329,13 @@ impl DocumentBackend for CsvBackend {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ruddydoc_graph::OxigraphStore;
+    use ruddydoc_graph::SparqStore;
 
     fn parse_csv(
         csv_data: &str,
         file_name: &str,
-    ) -> ruddydoc_core::Result<(OxigraphStore, DocumentMeta, String)> {
-        let store = OxigraphStore::new()?;
+    ) -> ruddydoc_core::Result<(SparqStore, DocumentMeta, String)> {
+        let store = SparqStore::new()?;
         let backend = CsvBackend::new();
         let source = DocumentSource::Stream {
             name: file_name.to_string(),

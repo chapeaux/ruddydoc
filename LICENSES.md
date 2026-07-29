@@ -12,7 +12,7 @@
 
 | Crate | Version | License | Compatible with MIT? | Notes |
 |-------|---------|---------|:-:|---------|
-| oxigraph | 0.5 | Apache 2.0 OR MIT | ✅ | Dual-licensed. Graph database is core dependency. No transitive issues. |
+| sparq-core, sparq-engine | git, pinned by commit | MIT | ✅ | RDF store / SPARQL engine, replaces oxigraph. Not on crates.io — see special note below. |
 | serde | 1 | Apache 2.0 OR MIT | ✅ | Standard serialization framework. Widely tested in Rust ecosystem. |
 | serde_json | 1 | Apache 2.0 OR MIT | ✅ | Standard JSON support. Transitive via serde. |
 | clap | 4 | Apache 2.0 OR MIT | ✅ | CLI argument parsing. Dual-licensed. |
@@ -38,8 +38,8 @@
 
 All dependencies use permissive licenses compatible with MIT:
 
-- **MIT License** (9 crates): pulldown-cmark, scraper, quick-xml, zip, lopdf, calamine, tokio, indicatif
-- **Apache 2.0 OR MIT** (7 crates): oxigraph, serde, serde_json, clap, image, ort, rayon, thiserror
+- **MIT License** (11 crates): pulldown-cmark, scraper, quick-xml, zip, lopdf, calamine, tokio, indicatif, sparq-core, sparq-engine
+- **Apache 2.0 OR MIT** (7 crates): serde, serde_json, clap, image, ort, rayon, thiserror
 - **MIT OR Unlicense** (1 crate): csv
 
 The Unlicense is explicitly public domain dedication, more permissive than MIT.
@@ -65,6 +65,44 @@ The `ort` crate (version 2) is Rust bindings to ONNX Runtime, which is maintaine
 2. **TensorRT** (Optional): Microsoft provides optional ONNX Runtime builds with TensorRT support. TensorRT is governed by NVIDIA's license. Document any GPU-enabled builds separately.
 
 3. **Recommendation:** Keep GPU support optional and feature-gated. Document this prominently in the README.
+
+---
+
+## Special Consideration: Sparq
+
+`ruddydoc-graph` depends on `sparq-core` and `sparq-engine` (the RDF
+triplestore and SPARQL engine that replaced Oxigraph) plus several opt-in
+capability crates from the same upstream
+[sparq-org/sparq](https://github.com/sparq-org/sparq) repository:
+`sparq-introspect` (schema introspection), `sparq-reason` (RDFS/OWL-RL
+materialization), `sparq-shacl` (shape validation), `sparq-text` (full-text
+search), `sparq-nlq` (natural-language querying), `sparq-canon` (RDF dataset
+canonicalization), and `sparq-prov` (W3C PROV-O lineage).
+
+**Sparq license:** MIT (confirmed from the repository's `LICENSE` file).
+
+**Important notes:**
+
+1. **Not published to any registry.** Sparq is pulled in as a `git` dependency
+   pinned by exact commit hash (not a tag or branch), rather than via
+   crates.io. This is the first non-registry dependency in this workspace —
+   `deny.toml`'s `[sources] allow-git` explicitly allow-lists
+   `https://github.com/sparq-org/sparq` for this reason.
+2. **Upstream is pre-1.0 and self-described as "experimental."** The pinned
+   commit should be bumped deliberately (re-vetted, not auto-updated), and the
+   pin should stay a full commit hash for reproducibility.
+3. **Large upstream surface, small subset used.** The sparq-org/sparq
+   repository is a large monorepo (60+ crates covering things like
+   zero-knowledge query proofs, federated MPC, GeoSPARQL, and a GUI). RuddyDoc
+   depends on the eight crates listed above — Cargo only builds those crates
+   and their own dependency graph, not the rest of the monorepo.
+4. **crates.io publishing impact.** Because `cargo publish` requires all
+   dependencies to be registry-resolvable, `ruddydoc-graph` and every crate
+   that depends on it (directly or transitively — effectively the whole
+   workspace except the format-detection-only backend crates) is now marked
+   `publish = false`. GitHub Releases, npm, Docker, and Homebrew distribution
+   are unaffected since they ship prebuilt binaries. Resume crates.io
+   publishing for these crates once Sparq itself is published to a registry.
 
 ---
 
@@ -130,7 +168,7 @@ RuddyDoc is licensed under the MIT License.
 
 This project includes the following third-party dependencies:
 
-- oxigraph (Apache 2.0 or MIT)
+- sparq-core, sparq-engine (MIT)
 - serde (Apache 2.0 or MIT)
 - serde_json (Apache 2.0 or MIT)
 - clap (Apache 2.0 or MIT)

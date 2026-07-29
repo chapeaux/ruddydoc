@@ -86,10 +86,13 @@ This document summarizes the distribution pipeline implementation for RuddyDoc.
 - **Artifacts**: Binary, LICENSE, README, SHA256 checksums
 - **Trigger**: Push tag `v*`
 
-### 2. crates.io
+### 2. crates.io (paused)
 - **Package**: `ruddydoc` (renamed from `ruddydoc-cli`)
 - **Installation**: `cargo install ruddydoc`
 - **Publishing**: Manual (documented in DISTRIBUTION.md)
+- **Status**: paused -- `ruddydoc-graph` pins Sparq via a git dependency (not
+  registry-published yet), so `cargo publish` fails for it and everything
+  depending on it. See LICENSES.md "Special Consideration: Sparq".
 
 ### 3. npm
 - **Package**: `@chapeaux/ruddydoc`

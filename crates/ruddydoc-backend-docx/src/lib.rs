@@ -1359,7 +1359,7 @@ impl DocumentBackend for DocxBackend {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ruddydoc_graph::OxigraphStore;
+    use ruddydoc_graph::SparqStore;
     use std::io::Write as _;
 
     // -------------------------------------------------------------------
@@ -1504,8 +1504,8 @@ mod tests {
     // Parse helper
     // -------------------------------------------------------------------
 
-    fn parse_docx(data: &[u8]) -> ruddydoc_core::Result<(OxigraphStore, DocumentMeta, String)> {
-        let store = OxigraphStore::new()?;
+    fn parse_docx(data: &[u8]) -> ruddydoc_core::Result<(SparqStore, DocumentMeta, String)> {
+        let store = SparqStore::new()?;
         let backend = DocxBackend::new();
         let source = DocumentSource::Stream {
             name: "test.docx".to_string(),
@@ -2330,7 +2330,7 @@ mod tests {
 
     #[test]
     fn invalid_zip_returns_error() {
-        let store = OxigraphStore::new().unwrap();
+        let store = SparqStore::new().unwrap();
         let backend = DocxBackend::new();
         let source = DocumentSource::Stream {
             name: "bad.docx".to_string(),
@@ -2348,7 +2348,7 @@ mod tests {
 
     #[test]
     fn missing_document_xml_returns_error() {
-        let store = OxigraphStore::new().unwrap();
+        let store = SparqStore::new().unwrap();
         let backend = DocxBackend::new();
 
         // Build a ZIP with no word/document.xml

@@ -76,7 +76,7 @@ pub fn exporter_for(format: OutputFormat) -> ruddydoc_core::Result<Box<dyn Docum
 mod tests {
     use super::*;
     use ruddydoc_core::{DocumentBackend, DocumentSource};
-    use ruddydoc_graph::OxigraphStore;
+    use ruddydoc_graph::SparqStore;
 
     fn compute_hash(data: &[u8]) -> String {
         use sha2::{Digest, Sha256};
@@ -90,8 +90,8 @@ mod tests {
         })
     }
 
-    fn setup_test_doc() -> ruddydoc_core::Result<(OxigraphStore, String)> {
-        let store = OxigraphStore::new()?;
+    fn setup_test_doc() -> ruddydoc_core::Result<(SparqStore, String)> {
+        let store = SparqStore::new()?;
         let backend = ruddydoc_backend_md::MarkdownBackend::new();
         let md = "# Test Heading\n\nA paragraph.\n\n- Item one\n- Item two\n\n```python\nprint('hello')\n```\n\n| Col1 | Col2 |\n|------|------|\n| A | B |\n\n![Logo](logo.png)\n";
         let source = DocumentSource::Stream {
@@ -104,8 +104,8 @@ mod tests {
         Ok((store, doc_graph))
     }
 
-    fn setup_rich_doc() -> ruddydoc_core::Result<(OxigraphStore, String)> {
-        let store = OxigraphStore::new()?;
+    fn setup_rich_doc() -> ruddydoc_core::Result<(SparqStore, String)> {
+        let store = SparqStore::new()?;
         let backend = ruddydoc_backend_md::MarkdownBackend::new();
         let md = "\
 # Document Title
@@ -346,7 +346,7 @@ fn main() {
 
     #[test]
     fn html_entity_escaping() -> ruddydoc_core::Result<()> {
-        let store = OxigraphStore::new()?;
+        let store = SparqStore::new()?;
         let backend = ruddydoc_backend_md::MarkdownBackend::new();
         let md = "# Title\n\nText with <b>HTML</b> & \"quotes\" inside.\n";
         let source = DocumentSource::Stream {
@@ -943,7 +943,7 @@ fn main() {
 
     #[test]
     fn doctags_export_escapes_angle_brackets() -> ruddydoc_core::Result<()> {
-        let store = OxigraphStore::new()?;
+        let store = SparqStore::new()?;
         let backend = ruddydoc_backend_md::MarkdownBackend::new();
         let md = "# Title\n\nText with <b>HTML</b> inside.\n";
         let source = DocumentSource::Stream {
@@ -1047,7 +1047,7 @@ fn main() {
     #[test]
     fn webvtt_export_with_timed_elements() -> ruddydoc_core::Result<()> {
         // Manually insert timed elements to test the timed path
-        let store = OxigraphStore::new()?;
+        let store = SparqStore::new()?;
         let doc_graph = "urn:ruddydoc:doc:timed_test";
         let rdf_type = "http://www.w3.org/1999/02/22-rdf-syntax-ns#type";
         let xsd_duration = "http://www.w3.org/2001/XMLSchema#duration";
@@ -1258,7 +1258,7 @@ fn main() {
     // Language-aware export tests
     // -----------------------------------------------------------------
 
-    fn setup_doc_with_language(lang: &str) -> ruddydoc_core::Result<(OxigraphStore, String)> {
+    fn setup_doc_with_language(lang: &str) -> ruddydoc_core::Result<(SparqStore, String)> {
         let (store, doc_graph) = setup_test_doc()?;
         // Set rdoc:language on the document node
         let sparql = format!(

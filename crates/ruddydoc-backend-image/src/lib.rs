@@ -218,7 +218,7 @@ impl DocumentBackend for ImageBackend {
 mod tests {
     use super::*;
     use image::RgbImage;
-    use ruddydoc_graph::OxigraphStore;
+    use ruddydoc_graph::SparqStore;
 
     /// Create a synthetic image in memory and return (bytes, name).
     fn make_image(
@@ -237,8 +237,8 @@ mod tests {
     fn parse_image(
         data: &[u8],
         name: &str,
-    ) -> ruddydoc_core::Result<(OxigraphStore, DocumentMeta, String)> {
-        let store = OxigraphStore::new()?;
+    ) -> ruddydoc_core::Result<(SparqStore, DocumentMeta, String)> {
+        let store = SparqStore::new()?;
         let backend = ImageBackend::new();
         let source = DocumentSource::Stream {
             name: name.to_string(),
@@ -475,7 +475,7 @@ mod tests {
             name: "bad.png".to_string(),
             data: b"this is not an image".to_vec(),
         };
-        let store = OxigraphStore::new().expect("store creation");
+        let store = SparqStore::new().expect("store creation");
         let result = backend.parse(&source, &store, "urn:test:graph");
         assert!(
             result.is_err(),

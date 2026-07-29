@@ -5,6 +5,10 @@ edition.workspace = true
 license.workspace = true
 repository.workspace = true
 description = "HTTP REST API and MCP server for RuddyDoc document conversion"
+# Depends transitively on ruddydoc-graph, which pins Sparq via a git
+# dependency (not on crates.io yet); can't publish until Sparq is.
+# See LICENSES.md "Special Consideration: Sparq".
+publish = false
 
 [dependencies]
 ruddydoc-core = { workspace = true }
@@ -12,6 +16,7 @@ ruddydoc-graph = { workspace = true }
 ruddydoc-converter = { workspace = true }
 ruddydoc-export = { workspace = true }
 ruddydoc-ontology = { workspace = true }
+ruddydoc-models = { workspace = true, default-features = false, features = ["embeddings-api", "llm-api"] }
 
 axum = "0.8"
 tokio = { workspace = true }

@@ -291,7 +291,7 @@ impl DocumentBackend for XlsxBackend {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ruddydoc_graph::OxigraphStore;
+    use ruddydoc_graph::SparqStore;
     use std::io::Write;
 
     // -----------------------------------------------------------------------
@@ -500,8 +500,8 @@ mod tests {
     fn parse_xlsx(
         xlsx_data: &[u8],
         file_name: &str,
-    ) -> ruddydoc_core::Result<(OxigraphStore, DocumentMeta, String)> {
-        let store = OxigraphStore::new()?;
+    ) -> ruddydoc_core::Result<(SparqStore, DocumentMeta, String)> {
+        let store = SparqStore::new()?;
         let backend = XlsxBackend::new();
         let source = DocumentSource::Stream {
             name: file_name.to_string(),
@@ -996,7 +996,7 @@ mod tests {
     #[test]
     fn error_on_invalid_data() {
         let backend = XlsxBackend::new();
-        let store = OxigraphStore::new().unwrap();
+        let store = SparqStore::new().unwrap();
         let source = DocumentSource::Stream {
             name: "bad.xlsx".to_string(),
             data: b"this is not an xlsx file".to_vec(),

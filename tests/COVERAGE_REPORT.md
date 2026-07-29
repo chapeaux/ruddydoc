@@ -26,7 +26,7 @@ RuddyDoc now has a comprehensive test suite with **361+ tests** across 13 crates
 | Crate | Unit Tests | Integration Tests | Notes |
 |-------|-----------|------------------|-------|
 | ruddydoc-core | 8 | 0 | Format detection, IRI construction |
-| ruddydoc-graph | 16 | 0 | Oxigraph store wrapper, SPARQL |
+| ruddydoc-graph | 19 | 0 | Sparq store wrapper, SPARQL |
 | ruddydoc-ontology | 5 | 0 | Ontology loading, term validation |
 
 ### Backends (Parsers)

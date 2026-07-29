@@ -168,7 +168,7 @@ Verifies the RDF graph representation is correct:
 Tests use fixtures from `/home/ldary/rh/chapeaux/ruddydoc/tests/fixtures/` via workspace-relative path resolution, ensuring tests work from any crate location.
 
 ### 5. Type-Safe Test Helpers
-All helper functions use strong types (`OxigraphStore`, `DocumentBackend`, etc.) and expect/unwrap with clear error messages.
+All helper functions use strong types (`SparqStore`, `DocumentBackend`, etc.) and expect/unwrap with clear error messages.
 
 ## Integration with CI/CD
 

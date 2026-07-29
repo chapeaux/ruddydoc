@@ -705,13 +705,12 @@ impl PipelineStage for ProvenanceStage {
                 )?;
             }
 
-            // Record processing date as ISO 8601.
-            // We use a fixed format to avoid pulling in chrono. In production
-            // this would use the system clock properly.
+            // Record processing date as ISO 8601, from the system clock.
+            // Dependency-free (no chrono/time) -- see `format_utc_now`.
             ctx.store.insert_literal(
                 &prov_iri,
                 &ont::iri(ont::PROP_PROCESSING_DATE),
-                "2026-04-07T00:00:00Z",
+                &format_utc_now(),
                 "string",
                 g,
             )?;
@@ -873,6 +872,37 @@ fn strip_iri_brackets(s: &str) -> String {
     }
 }
 
+/// The current wall-clock time as an `xsd:dateTime` lexical
+/// (`YYYY-MM-DDTHH:MM:SSZ`, UTC), computed from `SystemTime` without pulling
+/// in `chrono`/`time` for two lines. The civil-date conversion is Howard
+/// Hinnant's well-known algorithm.
+fn format_utc_now() -> String {
+    let epoch_secs = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs() as i64)
+        .unwrap_or(0);
+
+    let days = epoch_secs.div_euclid(86_400);
+    let tod = epoch_secs.rem_euclid(86_400);
+    let (h, mi, s) = (tod / 3600, (tod % 3600) / 60, tod % 60);
+    let (y, m, d) = civil_from_days(days);
+    format!("{y:04}-{m:02}-{d:02}T{h:02}:{mi:02}:{s:02}Z")
+}
+
+/// Days-from-epoch (1970-01-01 = 0) -> `(year, month, day)`.
+fn civil_from_days(z: i64) -> (i64, u32, u32) {
+    let z = z + 719_468;
+    let era = if z >= 0 { z } else { z - 146_096 }.div_euclid(146_097);
+    let doe = z - era * 146_097; // [0, 146096]
+    let yoe = (doe - doe / 1460 + doe / 36524 - doe / 146_096) / 365; // [0, 399]
+    let y = yoe + era * 400;
+    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100); // [0, 365]
+    let mp = (5 * doy + 2) / 153; // [0, 11]
+    let d = (doy - (153 * mp + 2) / 5 + 1) as u32; // [1, 31]
+    let m = (if mp < 10 { mp + 3 } else { mp - 9 }) as u32; // [1, 12]
+    (if m <= 2 { y + 1 } else { y }, m, d)
+}
+
 /// Parse a SPARQL numeric value to u32.
 ///
 /// Handles forms like `"42"^^<http://...#integer>` and plain `"42"`.
@@ -911,12 +941,12 @@ fn strip_numeric_literal(s: &str) -> String {
 mod tests {
     use super::*;
     use ruddydoc_core::{DocumentHash, InputFormat};
-    use ruddydoc_graph::OxigraphStore;
+    use ruddydoc_graph::SparqStore;
     use std::path::PathBuf;
 
     /// Create a test store wrapped in Arc.
-    fn test_store() -> Arc<OxigraphStore> {
-        Arc::new(OxigraphStore::new().expect("failed to create test store"))
+    fn test_store() -> Arc<SparqStore> {
+        Arc::new(SparqStore::new().expect("failed to create test store"))
     }
 
     /// Create a minimal DocumentMeta for testing.
@@ -932,7 +962,7 @@ mod tests {
     }
 
     /// Create a PipelineContext with the given store and graph.
-    fn test_context(store: Arc<OxigraphStore>) -> PipelineContext {
+    fn test_context(store: Arc<SparqStore>) -> PipelineContext {
         PipelineContext {
             store,
             doc_graph: "urn:ruddydoc:doc:testhash123".to_string(),
@@ -1660,6 +1690,29 @@ mod tests {
             strip_iri_brackets("http://example.com/foo"),
             "http://example.com/foo"
         );
+    }
+
+    #[test]
+    fn format_utc_now_matches_iso8601_shape() {
+        let now = format_utc_now();
+        assert_eq!(now.len(), 20, "expected YYYY-MM-DDTHH:MM:SSZ: {now}");
+        assert!(now.ends_with('Z'));
+        assert_eq!(&now[4..5], "-");
+        assert_eq!(&now[7..8], "-");
+        assert_eq!(&now[10..11], "T");
+        assert_eq!(&now[13..14], ":");
+        assert_eq!(&now[16..17], ":");
+        // A sanity bound: any run of this test suite happens well after 2020
+        // and (barring a very long-lived time machine) before 2100.
+        let year: i32 = now[0..4].parse().unwrap();
+        assert!((2020..2100).contains(&year), "unexpected year: {now}");
+    }
+
+    #[test]
+    fn civil_from_days_known_instant() {
+        // 2001-09-09 is day 11_574 since the epoch (1_000_000_000s / 86_400).
+        assert_eq!(civil_from_days(11_574), (2001, 9, 9));
+        assert_eq!(civil_from_days(0), (1970, 1, 1));
     }
 
     #[test]

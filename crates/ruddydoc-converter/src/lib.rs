@@ -18,7 +18,7 @@ use sha2::{Digest, Sha256};
 use tracing::debug;
 
 use ruddydoc_core::{ConversionStatus, DocumentMeta, DocumentSource, DocumentStore, InputFormat};
-use ruddydoc_graph::OxigraphStore;
+use ruddydoc_graph::SparqStore;
 use ruddydoc_ontology as ont;
 
 /// Result of a document conversion operation.
@@ -30,7 +30,14 @@ pub struct ConversionResult {
     /// Named graph IRI containing the parsed document.
     pub doc_graph: String,
     /// Reference to the store holding the parsed RDF data.
-    pub store: Arc<OxigraphStore>,
+    pub store: Arc<dyn DocumentStore>,
+    /// SHACL validation report (`conforms` + `results`), if validation ran.
+    /// A violation does **not** affect `status` -- conversion still
+    /// succeeds; callers that care about shape conformance inspect this.
+    pub validation: Option<serde_json::Value>,
+    /// RDFC-1.0 canonical-graph hash (hex SHA-256), if
+    /// `ConvertOptions.compute_canonical_hash` was set.
+    pub canonical_hash: Option<String>,
 }
 
 /// A language variant for a translation group.
@@ -68,6 +75,11 @@ pub struct ConvertOptions {
     pub max_file_size: Option<u64>,
     /// Maximum number of pages to process.
     pub max_pages: Option<u32>,
+    /// Compute an RDFC-1.0 canonical-graph hash for the converted document
+    /// (see `ConversionResult.canonical_hash`). Off by default: real perf
+    /// cost (a full graph canonicalization pass), and lower-priority than
+    /// the always-on materialization/validation steps.
+    pub compute_canonical_hash: bool,
 }
 
 /// The main document converter.
@@ -177,7 +189,7 @@ impl DocumentConverter {
     /// 2. Detects the format (extension / magic bytes / content sniffing)
     /// 3. Finds the appropriate backend
     /// 4. Creates a content-hash-based named graph IRI
-    /// 5. Creates an `OxigraphStore` and loads the ontology
+    /// 5. Creates an `SparqStore` and loads the ontology
     /// 6. Calls the backend's `parse()` method
     /// 7. Returns a `ConversionResult` with a reference to the store
     pub fn convert(&self, source: DocumentSource) -> ruddydoc_core::Result<ConversionResult> {
@@ -208,9 +220,11 @@ impl DocumentConverter {
         let hash_str = compute_hash(&bytes);
         let doc_graph = ruddydoc_core::doc_iri(&hash_str);
 
-        // Create store and load ontology
-        let store = Arc::new(OxigraphStore::new()?);
+        // Create store and load ontology + SHACL shapes
+        let sparq = Arc::new(SparqStore::new()?);
+        let store: Arc<dyn DocumentStore> = sparq.clone();
         ruddydoc_ontology::load_ontology(store.as_ref())?;
+        ruddydoc_ontology::load_shapes(&sparq)?;
 
         // Build the source for parsing (use the bytes we already read)
         let parse_source = DocumentSource::Stream {
@@ -220,12 +234,52 @@ impl DocumentConverter {
 
         // Parse
         match backend.parse(&parse_source, store.as_ref(), &doc_graph) {
-            Ok(meta) => Ok(ConversionResult {
-                input: meta,
-                status: ConversionStatus::Success,
-                doc_graph,
-                store,
-            }),
+            Ok(meta) => {
+                // Materialize RDFS entailment (subclass/subproperty/domain/range)
+                // so e.g. querying for `rdoc:TextElement` finds paragraphs and
+                // headers, not just elements explicitly typed as TextElement.
+                // Treated as fatal like the ontology load above -- an
+                // infra-level correctness step, not a property of this
+                // document's content.
+                sparq.materialize_rdfs(ruddydoc_ontology::ONTOLOGY_GRAPH, &doc_graph)?;
+
+                // SHACL validation report is attached to the result, not
+                // treated as fatal -- a shape violation is a property of
+                // this document's content, not an infra failure, so
+                // conversion still succeeds either way (per design decision).
+                let validation =
+                    Some(sparq.validate_shacl(ruddydoc_ontology::SHAPES_GRAPH, &doc_graph)?);
+
+                // Canonical hash is computed *before* PROV-O lineage is
+                // recorded below -- lineage triples carry a wall-clock
+                // timestamp, so hashing after would make otherwise-identical
+                // conversions of the same input produce a different hash on
+                // every run.
+                let canonical_hash = if self.options.compute_canonical_hash {
+                    Some(sparq.canonical_hash(&doc_graph)?)
+                } else {
+                    None
+                };
+
+                // W3C PROV-O lineage, supplementary to the bespoke
+                // `rdoc:Provenance` model `ProvenanceStage` attaches per
+                // element. Treated as fatal like RDFS materialization above
+                // -- an infra-level step, not a property of this document's
+                // content.
+                sparq.record_conversion_provenance(
+                    &doc_graph,
+                    &ruddydoc_core::source_iri(&hash_str),
+                )?;
+
+                Ok(ConversionResult {
+                    input: meta,
+                    status: ConversionStatus::Success,
+                    doc_graph,
+                    store,
+                    validation,
+                    canonical_hash,
+                })
+            }
             Err(e) => {
                 // Return a result with Failure status and minimal metadata
                 let meta = DocumentMeta {
@@ -242,6 +296,8 @@ impl DocumentConverter {
                     status: ConversionStatus::Failure,
                     doc_graph,
                     store,
+                    validation: None,
+                    canonical_hash: None,
                 })
             }
         }
@@ -271,7 +327,7 @@ impl DocumentConverter {
     /// `rdoc:translationGroup`. The `rdoc:language` property is set on
     /// each document node.
     ///
-    /// Note: each variant gets its own `OxigraphStore` because
+    /// Note: each variant gets its own `SparqStore` because
     /// `convert()` creates one per document. The TranslationGroup node
     /// is inserted into the **first** variant's store for convenience.
     pub fn convert_translation_group(
@@ -435,7 +491,6 @@ impl std::fmt::Display for FormatInfo {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ruddydoc_core::DocumentStore;
 
     #[test]
     fn detect_format_markdown_file() {
@@ -496,10 +551,122 @@ mod tests {
     }
 
     #[test]
+    fn convert_materializes_rdfs_superclass_types() {
+        // Regression test for the gap that motivated RDFS materialization:
+        // backends only assert an element's exact leaf class (e.g.
+        // rdoc:Paragraph), so querying for its superclass (rdoc:TextElement)
+        // used to return nothing even though the ontology declares
+        // `rdoc:Paragraph rdfs:subClassOf rdoc:TextElement`.
+        let converter = DocumentConverter::default_converter();
+        let source = DocumentSource::Stream {
+            name: "test.md".to_string(),
+            data: b"# Heading\n\nA paragraph.\n".to_vec(),
+        };
+        let result = converter.convert(source).unwrap();
+        assert_eq!(result.status, ConversionStatus::Success);
+
+        let sparql = format!(
+            "SELECT ?x WHERE {{ GRAPH <{}> {{ ?x a <{}TextElement> }} }}",
+            result.doc_graph,
+            ruddydoc_ontology::NAMESPACE
+        );
+        let json = result.store.query_to_json(&sparql).unwrap();
+        let rows = json.as_array().expect("expected array");
+        assert!(
+            !rows.is_empty(),
+            "expected materialized rdoc:TextElement matches for the paragraph/heading"
+        );
+    }
+
+    #[test]
+    fn convert_attaches_conforming_shacl_report() {
+        let converter = DocumentConverter::default_converter();
+        let source = DocumentSource::Stream {
+            name: "test.md".to_string(),
+            data: b"# Heading\n\nA paragraph.\n".to_vec(),
+        };
+        let result = converter.convert(source).unwrap();
+        assert_eq!(result.status, ConversionStatus::Success);
+
+        let report = result.validation.expect("expected a validation report");
+        assert_eq!(
+            report["conforms"], true,
+            "a real backend-produced document should conform to the ontology's own shapes: {report}"
+        );
+    }
+
+    #[test]
+    fn convert_records_prov_o_lineage() {
+        let converter = DocumentConverter::default_converter();
+        let source = DocumentSource::Stream {
+            name: "test.md".to_string(),
+            data: b"# Heading\n\nA paragraph.\n".to_vec(),
+        };
+        let result = converter.convert(source).unwrap();
+        assert_eq!(result.status, ConversionStatus::Success);
+
+        let doc_graph = &result.doc_graph;
+        let used = result
+            .store
+            .query_to_json(&format!(
+                "ASK {{ GRAPH <{doc_graph}> {{ ?activity \
+                 <http://www.w3.org/ns/prov#used> ?source }} }}"
+            ))
+            .unwrap();
+        assert_eq!(
+            used,
+            serde_json::json!(true),
+            "expected a prov:Activity recording the conversion's source input"
+        );
+
+        let generated = result
+            .store
+            .query_to_json(&format!(
+                "ASK {{ GRAPH <{doc_graph}> {{ <{doc_graph}> \
+                 <http://www.w3.org/ns/prov#wasGeneratedBy> ?activity }} }}"
+            ))
+            .unwrap();
+        assert_eq!(
+            generated,
+            serde_json::json!(true),
+            "expected the document graph's own IRI to be the prov:Entity wasGeneratedBy the conversion activity"
+        );
+    }
+
+    #[test]
+    fn convert_canonical_hash_is_deterministic_despite_prov_lineage() {
+        // PROV-O lineage (recorded unconditionally, after the canonical hash
+        // is computed) carries a wall-clock timestamp. If it were ever
+        // recorded *before* hashing, repeated conversions of byte-identical
+        // input would produce a different hash every run -- this guards
+        // against that regression.
+        let converter = DocumentConverter::new(ConvertOptions {
+            max_file_size: None,
+            max_pages: None,
+            compute_canonical_hash: true,
+        });
+        let data = b"# Heading\n\nA paragraph.\n".to_vec();
+
+        let result_a = converter
+            .convert(DocumentSource::Stream { name: "test.md".to_string(), data: data.clone() })
+            .unwrap();
+        let result_b = converter
+            .convert(DocumentSource::Stream { name: "test.md".to_string(), data })
+            .unwrap();
+
+        assert_eq!(
+            result_a.canonical_hash.expect("expected a canonical hash"),
+            result_b.canonical_hash.expect("expected a canonical hash"),
+            "identical input should produce an identical canonical hash across separate runs"
+        );
+    }
+
+    #[test]
     fn convert_file_size_limit() {
         let converter = DocumentConverter::new(ConvertOptions {
             max_file_size: Some(5),
             max_pages: None,
+            compute_canonical_hash: false,
         });
         let source = DocumentSource::Stream {
             name: "test.md".to_string(),

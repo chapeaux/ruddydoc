@@ -24,7 +24,14 @@ Use this checklist when creating a new RuddyDoc release.
 
 ## Post-Release
 
-### Publish to crates.io
+### Publish to crates.io (paused)
+
+**Paused:** `ruddydoc-graph` pins [Sparq](https://github.com/sparq-org/sparq) via
+a git dependency (not on any registry yet), so `cargo publish` fails for every
+crate below except `ruddydoc-core`. All affected crates are `publish = false`.
+Skip this section until Sparq is registry-published -- see
+[LICENSES.md](LICENSES.md#special-consideration-sparq) and
+[DISTRIBUTION.md](DISTRIBUTION.md).
 
 Run these commands in order (crates must be published in dependency order):
 

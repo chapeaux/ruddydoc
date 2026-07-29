@@ -1224,7 +1224,7 @@ pub mod pdfium_backend {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ruddydoc_graph::OxigraphStore;
+    use ruddydoc_graph::SparqStore;
 
     /// Build a minimal valid PDF with the given text content on one page,
     /// optionally with metadata in the Info dictionary.
@@ -1375,8 +1375,8 @@ mod tests {
         buf
     }
 
-    fn parse_pdf(data: &[u8]) -> ruddydoc_core::Result<(OxigraphStore, DocumentMeta, String)> {
-        let store = OxigraphStore::new()?;
+    fn parse_pdf(data: &[u8]) -> ruddydoc_core::Result<(SparqStore, DocumentMeta, String)> {
+        let store = SparqStore::new()?;
         let backend = PdfBackend::new();
         let source = DocumentSource::Stream {
             name: "test.pdf".to_string(),
@@ -1654,7 +1654,7 @@ mod tests {
             name: "bad.pdf".to_string(),
             data: b"this is not a valid pdf".to_vec(),
         };
-        let store = OxigraphStore::new().expect("store");
+        let store = SparqStore::new().expect("store");
         let graph = "urn:test:graph";
         let result = backend.parse(&source, &store, graph);
         assert!(result.is_err());

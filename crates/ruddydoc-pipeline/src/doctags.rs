@@ -478,11 +478,11 @@ impl Default for DocTagsParser {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ruddydoc_graph::OxigraphStore;
+    use ruddydoc_graph::SparqStore;
     use std::sync::Arc;
 
-    fn test_store() -> Arc<OxigraphStore> {
-        Arc::new(OxigraphStore::new().expect("failed to create test store"))
+    fn test_store() -> Arc<SparqStore> {
+        Arc::new(SparqStore::new().expect("failed to create test store"))
     }
 
     // -- Basic element parsing --

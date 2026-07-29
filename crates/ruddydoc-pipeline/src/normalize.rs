@@ -173,15 +173,15 @@ fn normalize_property(
 mod tests {
     use super::*;
     use ruddydoc_core::{DocumentHash, DocumentMeta, DocumentStore, InputFormat};
-    use ruddydoc_graph::OxigraphStore;
+    use ruddydoc_graph::SparqStore;
     use std::path::PathBuf;
     use std::sync::Arc;
 
     use crate::{PipelineContext, PipelineOptions};
 
     /// Create a test store wrapped in Arc.
-    fn test_store() -> Arc<OxigraphStore> {
-        Arc::new(OxigraphStore::new().expect("failed to create test store"))
+    fn test_store() -> Arc<SparqStore> {
+        Arc::new(SparqStore::new().expect("failed to create test store"))
     }
 
     /// Create a minimal DocumentMeta for testing.
@@ -197,7 +197,7 @@ mod tests {
     }
 
     /// Create a PipelineContext with the given store.
-    fn test_context(store: Arc<OxigraphStore>) -> PipelineContext {
+    fn test_context(store: Arc<SparqStore>) -> PipelineContext {
         PipelineContext {
             store,
             doc_graph: "urn:ruddydoc:doc:normtest".to_string(),

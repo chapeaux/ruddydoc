@@ -8,10 +8,18 @@ homepage.workspace = true
 description = "Fast document conversion with embedded knowledge graph"
 keywords = ["document", "pdf", "conversion", "rdf", "sparql"]
 categories = ["command-line-utilities", "text-processing"]
+# Depends transitively on ruddydoc-graph, which pins Sparq via a git
+# dependency (not on crates.io yet); can't publish until Sparq is.
+# `cargo install ruddydoc` is unavailable until then -- use GitHub Releases,
+# npm, Docker, or Homebrew instead. See LICENSES.md "Special Consideration: Sparq".
+publish = false
 
 [[bin]]
 name = "ruddydoc"
 path = "src/main.rs"
+
+[features]
+server = ["dep:ruddydoc-server", "dep:tokio"]
 
 [dependencies]
 ruddydoc-core = { workspace = true }
@@ -19,8 +27,10 @@ ruddydoc-converter = { workspace = true }
 ruddydoc-export = { workspace = true }
 ruddydoc-graph = { workspace = true }
 ruddydoc-ontology = { workspace = true }
+ruddydoc-server = { workspace = true, optional = true }
 clap = { workspace = true }
 serde_json = { workspace = true }
 serde = { workspace = true }
 sha2 = "0.10"
 toml = { workspace = true }
+tokio = { workspace = true, optional = true }

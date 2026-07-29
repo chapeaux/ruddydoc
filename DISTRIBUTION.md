@@ -7,10 +7,22 @@ This document describes the distribution pipeline for RuddyDoc.
 RuddyDoc is distributed through multiple channels:
 
 1. **GitHub Releases** - Pre-built binaries for 5 platforms
-2. **crates.io** - Rust package registry (`cargo install ruddydoc`)
+2. **crates.io** - Rust package registry (`cargo install ruddydoc`) -- **currently paused**, see note below
 3. **npm** - JavaScript package manager (`npx @chapeaux/ruddydoc`)
 4. **Docker** - Container images (`ghcr.io/chapeaux/ruddydoc`)
 5. **Homebrew** - Package manager for macOS and Linux (planned)
+
+> **crates.io publishing is paused.** `ruddydoc-graph` depends on
+> [Sparq](https://github.com/sparq-org/sparq) via a pinned git dependency (Sparq
+> isn't published to any registry yet), and `cargo publish` requires every
+> dependency to be registry-resolvable. This affects `ruddydoc-graph` and
+> everything that depends on it, directly or transitively -- effectively every
+> crate in the workspace except the standalone format-detection backends. All
+> affected crates are marked `publish = false`. GitHub Releases, npm, Docker,
+> and Homebrew are unaffected since they ship prebuilt binaries. **TODO:**
+> resume crates.io publishing (remove `publish = false`, restore the steps
+> below) once Sparq is published to a registry. See
+> [LICENSES.md](LICENSES.md#special-consideration-sparq).
 
 ## Supported Platforms
 
@@ -64,9 +76,12 @@ The `.github/workflows/rust-release.yml` workflow will:
 
 ### 4. Manual Steps (Post-Release)
 
-#### Publish to crates.io
+#### Publish to crates.io (paused -- see note above)
 
 ```bash
+# PAUSED: this will fail for every crate below except ruddydoc-core, since
+# ruddydoc-graph pins Sparq via a git dependency and cargo publish requires
+# all dependencies to be registry-resolvable. Resume once Sparq is published.
 # Publish workspace crates in dependency order
 cargo publish -p ruddydoc-core
 cargo publish -p ruddydoc-graph

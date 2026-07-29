@@ -56,7 +56,25 @@ ruddydoc-backend-asciidoc = { version = "0.1.0", path = "crates/ruddydoc-backend
 ruddydoc-server = { version = "0.1.0", path = "crates/ruddydoc-server" }
 
 # External dependencies (shared versions)
-oxigraph = "0.5"
+# Sparq replaces oxigraph as the embedded RDF store / SPARQL engine. It isn't
+# published to crates.io yet, so it's pinned by exact commit hash (not a tag
+# or branch) for reproducibility -- see LICENSES.md "Special Consideration:
+# Sparq" and deny.toml's `[sources] allow-git`. Bump deliberately, not
+# automatically, given upstream is pre-1.0 and marked experimental.
+sparq-core = { git = "https://github.com/sparq-org/sparq", rev = "4beba52bbb4bb949c8c4758987162fe7944d12f7" }
+sparq-engine = { git = "https://github.com/sparq-org/sparq", rev = "4beba52bbb4bb949c8c4758987162fe7944d12f7", features = ["serialize-rdf"] }
+sparq-introspect = { git = "https://github.com/sparq-org/sparq", rev = "4beba52bbb4bb949c8c4758987162fe7944d12f7" }
+sparq-reason = { git = "https://github.com/sparq-org/sparq", rev = "4beba52bbb4bb949c8c4758987162fe7944d12f7" }
+sparq-shacl = { git = "https://github.com/sparq-org/sparq", rev = "4beba52bbb4bb949c8c4758987162fe7944d12f7" }
+sparq-text = { git = "https://github.com/sparq-org/sparq", rev = "4beba52bbb4bb949c8c4758987162fe7944d12f7" }
+sparq-nlq = { git = "https://github.com/sparq-org/sparq", rev = "4beba52bbb4bb949c8c4758987162fe7944d12f7" }
+sparq-canon = { git = "https://github.com/sparq-org/sparq", rev = "4beba52bbb4bb949c8c4758987162fe7944d12f7" }
+sparq-prov = { git = "https://github.com/sparq-org/sparq", rev = "4beba52bbb4bb949c8c4758987162fe7944d12f7" }
+# Same oxrdf/oxrdfxml versions Sparq itself pins, so Cargo unifies to one
+# instance -- oxrdf::Term/NamedNode/Literal built for Sparq's Graph are the
+# exact types ruddydoc-graph constructs and passes back in.
+oxrdf = { version = "0.3", features = ["rdf-12"] }
+oxrdfxml = { version = "0.2", features = ["rdf-12"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 thiserror = "2"

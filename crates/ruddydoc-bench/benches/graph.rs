@@ -7,7 +7,7 @@ use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 
 use ruddydoc_bench::{compute_hash, generate_large_markdown};
 use ruddydoc_core::{DocumentBackend, DocumentSource, DocumentStore};
-use ruddydoc_graph::OxigraphStore;
+use ruddydoc_graph::SparqStore;
 use ruddydoc_ontology as ont;
 
 // ---------------------------------------------------------------------------
@@ -20,7 +20,7 @@ fn bench_triple_insertion(c: &mut Criterion) {
     for count in [100, 500, 1000, 5000] {
         group.bench_with_input(BenchmarkId::new("triples", count), &count, |b, &count| {
             b.iter(|| {
-                let store = OxigraphStore::new().expect("store");
+                let store = SparqStore::new().expect("store");
                 let graph = "urn:ruddydoc:doc:bench";
                 let rdf_type = ont::rdf_iri("type");
                 let class = ont::iri(ont::CLASS_PARAGRAPH);
@@ -48,7 +48,7 @@ fn bench_literal_insertion(c: &mut Criterion) {
     for count in [100, 500, 1000] {
         group.bench_with_input(BenchmarkId::new("literals", count), &count, |b, &count| {
             b.iter(|| {
-                let store = OxigraphStore::new().expect("store");
+                let store = SparqStore::new().expect("store");
                 let graph = "urn:ruddydoc:doc:bench";
                 let prop = ont::iri(ont::PROP_TEXT_CONTENT);
 
@@ -73,7 +73,7 @@ fn bench_literal_insertion(c: &mut Criterion) {
 fn bench_mixed_insertion(c: &mut Criterion) {
     c.bench_function("insert_realistic_element_1000", |b| {
         b.iter(|| {
-            let store = OxigraphStore::new().expect("store");
+            let store = SparqStore::new().expect("store");
             let graph = "urn:ruddydoc:doc:bench";
             let rdf_type = ont::rdf_iri("type");
             let doc_iri = "urn:ruddydoc:doc:bench/doc";
@@ -127,8 +127,8 @@ fn bench_mixed_insertion(c: &mut Criterion) {
 // ---------------------------------------------------------------------------
 
 /// Create a pre-populated store with `n` elements for query benchmarks.
-fn populate_store(n: usize) -> (OxigraphStore, String) {
-    let store = OxigraphStore::new().expect("store");
+fn populate_store(n: usize) -> (SparqStore, String) {
+    let store = SparqStore::new().expect("store");
     let graph = "urn:ruddydoc:doc:query_bench";
     let rdf_type = ont::rdf_iri("type");
     let doc_iri = "urn:ruddydoc:doc:query_bench/doc";
@@ -393,7 +393,7 @@ fn bench_full_graph_pipeline(c: &mut Criterion) {
 
     c.bench_function("full_parse_query_serialize_500_lines", |b| {
         b.iter(|| {
-            let store = OxigraphStore::new().expect("store");
+            let store = SparqStore::new().expect("store");
             let backend = ruddydoc_backend_md::MarkdownBackend::new();
             let source = DocumentSource::Stream {
                 name: "bench.md".to_string(),

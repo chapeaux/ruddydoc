@@ -4,9 +4,24 @@ version = "0.1.0"
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
-description = "Oxigraph-based document store for RuddyDoc"
+description = "Sparq-based document store for RuddyDoc"
+# Depends on Sparq via a pinned git dependency (not on crates.io yet), so this
+# crate can't be published until Sparq itself is published to a registry.
+# See LICENSES.md "Special Consideration: Sparq".
+publish = false
 
 [dependencies]
 ruddydoc-core = { workspace = true }
-oxigraph = { workspace = true }
+sparq-core = { workspace = true }
+sparq-engine = { workspace = true }
+sparq-introspect = { workspace = true }
+sparq-reason = { workspace = true }
+sparq-shacl = { workspace = true }
+sparq-text = { workspace = true }
+sparq-nlq = { workspace = true }
+sparq-canon = { workspace = true }
+sparq-prov = { workspace = true }
+sha2 = "0.10"
+oxrdf = { workspace = true }
+oxrdfxml = { workspace = true }
 serde_json = { workspace = true }

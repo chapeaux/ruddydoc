@@ -623,6 +623,24 @@ rdoc:elementLanguage a rdf:Property ;
   rdfs:label "element language" ;
   rdfs:comment "BCP 47 language tag for this element, when different from document language." .
 
+# -- RAG chunks --
+
+rdoc:Chunk a rdfs:Class ;
+  rdfs:label "Chunk" ;
+  rdfs:comment "A structure-aware text chunk of a document, produced for RAG retrieval. Embedded via an external provider and indexed for semantic similarity search." .
+
+rdoc:chunkText a rdf:Property ;
+  rdfs:domain rdoc:Chunk ;
+  rdfs:range xsd:string ;
+  rdfs:label "chunk text" ;
+  rdfs:comment "The chunk's text content, as embedded." .
+
+rdoc:chunkIndex a rdf:Property ;
+  rdfs:domain rdoc:Chunk ;
+  rdfs:range xsd:integer ;
+  rdfs:label "chunk index" ;
+  rdfs:comment "The 0-based position of this chunk among the document's chunks." .
+
 # =============================================================================
 # Schema.org bridge -- explicit equivalences for JSON-LD export
 # =============================================================================
@@ -650,6 +668,69 @@ rdoc:pageCount owl:equivalentProperty schema:numberOfPages .
 rdoc:PictureElement rdfs:subClassOf schema:ImageObject .
 rdoc:TableElement rdfs:subClassOf schema:Table .
 rdoc:Code rdfs:subClassOf schema:SoftwareSourceCode .
+
+# =============================================================================
+# SHACL Shapes -- structural validation for converted documents
+# =============================================================================
+#
+# Scoped to the highest-value classes, not exhaustive coverage of every class
+# above. Shapes target rdoc:Document/TextElement/TableElement rather than
+# each leaf subclass individually -- RDFS materialization (see
+# ruddydoc-graph's SparqStore::materialize_rdfs, run before validation) means
+# every rdoc:Paragraph/SectionHeader/etc. instance already carries the
+# rdf:type rdoc:TextElement superclass triple by the time validation runs, so
+# one shape targeting the superclass covers every subclass instance.
+#
+# Loaded via Turtle parsing (Graph::load_str) into a dedicated shapes named
+# graph, not via ruddydoc-ontology's programmatic loader -- see
+# ruddydoc_ontology::load_shapes.
+
+rdoc:DocumentShape a sh:NodeShape ;
+  sh:targetClass rdoc:Document ;
+  sh:property [
+    sh:path rdoc:fileName ;
+    sh:datatype xsd:string ;
+    sh:minCount 1 ;
+    sh:message "rdoc:Document must have a rdoc:fileName" ;
+  ] ;
+  sh:property [
+    sh:path rdoc:sourceFormat ;
+    sh:datatype xsd:string ;
+    sh:minCount 1 ;
+    sh:message "rdoc:Document must have a rdoc:sourceFormat" ;
+  ] .
+
+rdoc:TextElementShape a sh:NodeShape ;
+  sh:targetClass rdoc:TextElement ;
+  sh:property [
+    sh:path rdoc:textContent ;
+    sh:datatype xsd:string ;
+    sh:minCount 1 ;
+    sh:message "rdoc:TextElement must have rdoc:textContent" ;
+  ] ;
+  sh:property [
+    sh:path rdoc:readingOrder ;
+    # NOTE: the ontology's rdfs:range above declares xsd:nonNegativeInteger,
+    # but backends actually insert readingOrder via insert_literal's plain
+    # "integer" shortcut (xsd:integer) -- sh:datatype requires an exact
+    # match (no subtype awareness), so this shape targets what the code
+    # actually produces rather than the aspirational rdfs:range. Tightening
+    # backends to emit xsd:nonNegativeInteger and then tightening this shape
+    # to match is a reasonable future cleanup, not required for validation
+    # to be useful now.
+    sh:datatype xsd:integer ;
+    sh:minCount 1 ;
+    sh:message "rdoc:TextElement must have a rdoc:readingOrder" ;
+  ] .
+
+rdoc:TableElementShape a sh:NodeShape ;
+  sh:targetClass rdoc:TableElement ;
+  sh:property [
+    sh:path rdoc:readingOrder ;
+    sh:datatype xsd:integer ;
+    sh:minCount 1 ;
+    sh:message "rdoc:TableElement must have a rdoc:readingOrder" ;
+  ] .
 
 # =============================================================================
 # End of RuddyDoc Document Ontology

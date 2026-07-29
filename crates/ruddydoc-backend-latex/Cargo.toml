@@ -5,6 +5,10 @@ edition.workspace = true
 license.workspace = true
 repository.workspace = true
 description = "LaTeX parser backend for RuddyDoc"
+# Depends transitively on ruddydoc-graph, which pins Sparq via a git
+# dependency (not on crates.io yet); can't publish until Sparq is.
+# See LICENSES.md "Special Consideration: Sparq".
+publish = false
 
 [dependencies]
 ruddydoc-core = { workspace = true }

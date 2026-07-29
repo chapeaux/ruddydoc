@@ -950,10 +950,10 @@ impl DocumentBackend for HtmlBackend {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ruddydoc_graph::OxigraphStore;
+    use ruddydoc_graph::SparqStore;
 
-    fn parse_html(html: &str) -> ruddydoc_core::Result<(OxigraphStore, DocumentMeta, String)> {
-        let store = OxigraphStore::new()?;
+    fn parse_html(html: &str) -> ruddydoc_core::Result<(SparqStore, DocumentMeta, String)> {
+        let store = SparqStore::new()?;
         let backend = HtmlBackend::new();
         let source = DocumentSource::Stream {
             name: "test.html".to_string(),

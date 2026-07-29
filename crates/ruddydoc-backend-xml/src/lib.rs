@@ -1386,14 +1386,14 @@ fn emit_table_cell(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ruddydoc_graph::OxigraphStore;
+    use ruddydoc_graph::SparqStore;
 
     // -------------------------------------------------------------------
     // Test helpers
     // -------------------------------------------------------------------
 
-    fn parse_xml(xml: &str) -> ruddydoc_core::Result<(OxigraphStore, DocumentMeta, String)> {
-        let store = OxigraphStore::new()?;
+    fn parse_xml(xml: &str) -> ruddydoc_core::Result<(SparqStore, DocumentMeta, String)> {
+        let store = SparqStore::new()?;
         let backend = XmlBackend::new();
         let source = DocumentSource::Stream {
             name: "test.xml".to_string(),

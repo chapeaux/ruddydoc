@@ -1236,7 +1236,7 @@ impl DocumentBackend for PptxBackend {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ruddydoc_graph::OxigraphStore;
+    use ruddydoc_graph::SparqStore;
     use std::io::Write as _;
     use zip::write::SimpleFileOptions;
 
@@ -1386,8 +1386,8 @@ mod tests {
     }
 
     /// Parse a PPTX from bytes and return the store, metadata, and graph IRI.
-    fn parse_pptx(data: &[u8]) -> ruddydoc_core::Result<(OxigraphStore, DocumentMeta, String)> {
-        let store = OxigraphStore::new()?;
+    fn parse_pptx(data: &[u8]) -> ruddydoc_core::Result<(SparqStore, DocumentMeta, String)> {
+        let store = SparqStore::new()?;
         let backend = PptxBackend::new();
         let source = DocumentSource::Stream {
             name: "test.pptx".to_string(),
@@ -1816,7 +1816,7 @@ mod tests {
             name: "bad.pptx".to_string(),
             data: b"this is not a zip file".to_vec(),
         };
-        let store = OxigraphStore::new().unwrap();
+        let store = SparqStore::new().unwrap();
         let result = backend.parse(&source, &store, "urn:test:graph");
         assert!(result.is_err());
     }

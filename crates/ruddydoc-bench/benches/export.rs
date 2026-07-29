@@ -11,11 +11,11 @@ use ruddydoc_export::{
     ChunkOptions, DocTagsExporter, HtmlExporter, JsonExporter, JsonLdExporter, MarkdownExporter,
     NTriplesExporter, RdfXmlExporter, TextExporter, TurtleExporter, WebVttExporter, chunk_document,
 };
-use ruddydoc_graph::OxigraphStore;
+use ruddydoc_graph::SparqStore;
 
 /// Parse a Markdown string into a store and return (store, doc_graph).
-fn setup_store(md: &str) -> (OxigraphStore, String) {
-    let store = OxigraphStore::new().expect("store creation failed");
+fn setup_store(md: &str) -> (SparqStore, String) {
+    let store = SparqStore::new().expect("store creation failed");
     ruddydoc_ontology::load_ontology(&store).expect("ontology load failed");
     let backend = ruddydoc_backend_md::MarkdownBackend::new();
     let source = DocumentSource::Stream {

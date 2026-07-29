@@ -1,6 +1,6 @@
 # RuddyDoc Document Ontology
 
-The RuddyDoc ontology defines how parsed documents are represented as RDF knowledge graphs in an embedded Oxigraph store. It covers document hierarchy, text elements, tables, pictures, spatial layout (bounding boxes), provenance (how elements were detected), and cross-references.
+The RuddyDoc ontology defines how parsed documents are represented as RDF knowledge graphs in an embedded Sparq store. It covers document hierarchy, text elements, tables, pictures, spatial layout (bounding boxes), provenance (how elements were detected), and cross-references.
 
 ## Namespace and Prefix
 

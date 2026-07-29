@@ -147,6 +147,12 @@ struct ConvertArgs {
     /// Enable text normalization for accent-insensitive search.
     #[arg(long, default_value_t = true, action = clap::ArgAction::Set)]
     normalize: bool,
+
+    /// Compute an RDFC-1.0 canonical-graph hash for the converted document
+    /// (printed alongside the usual conversion summary). Off by default --
+    /// a real perf cost (a full graph canonicalization pass).
+    #[arg(long)]
+    canonical_hash: bool,
 }
 
 // ---------------------------------------------------------------------------
@@ -341,6 +347,7 @@ fn run_convert(args: &ConvertArgs) -> i32 {
             &args.format,
             args.max_file_size,
             args.language.as_deref(),
+            args.canonical_hash,
         ) {
             Ok(()) => success_count += 1,
             Err(e) => {
@@ -392,6 +399,7 @@ fn run_convert_manifest(manifest_path: &Path, args: &ConvertArgs) -> i32 {
     let options = ConvertOptions {
         max_file_size: args.max_file_size,
         max_pages: None,
+        compute_canonical_hash: args.canonical_hash,
     };
     let converter = DocumentConverter::new(options);
 
@@ -465,6 +473,7 @@ fn run_convert_single(
     format: &OutputFormatArg,
     max_file_size: Option<u64>,
     language: Option<&str>,
+    canonical_hash: bool,
 ) -> ruddydoc_core::Result<()> {
     if !input.exists() {
         return Err(format!("file not found: {}", input.display()).into());
@@ -473,6 +482,7 @@ fn run_convert_single(
     let options = ConvertOptions {
         max_file_size,
         max_pages: None,
+        compute_canonical_hash: canonical_hash,
     };
     let converter = DocumentConverter::new(options);
     let source = DocumentSource::File(input.to_path_buf());
@@ -499,6 +509,10 @@ fn run_convert_single(
         result.input.file_size,
         result.store.triple_count().unwrap_or(0),
     );
+
+    if let Some(hash) = &result.canonical_hash {
+        eprintln!("canonical hash: {hash}");
+    }
 
     let output_format = format.to_output_format();
     let exported = export_result(&result, output_format)?;
@@ -615,14 +629,21 @@ fn run_info(input: &Path) -> ruddydoc_core::Result<()> {
 
 fn run_query(args: &QueryArgs) -> ruddydoc_core::Result<()> {
     // Parse each file and load into a shared store.
-    let store = Arc::new(ruddydoc_graph::OxigraphStore::new()?);
+    let sparq = Arc::new(ruddydoc_graph::SparqStore::new()?);
+    let store: Arc<dyn DocumentStore> = sparq.clone();
     ruddydoc_ontology::load_ontology(store.as_ref())?;
+    ruddydoc_ontology::load_shapes(&sparq)?;
 
     for input in &args.files {
         if !input.exists() {
             return Err(format!("file not found: {}", input.display()).into());
         }
-        convert_into_store(input, &store)?;
+        let (doc_graph, hash_str) = convert_into_store(input, store.as_ref())?;
+        // Same steps DocumentConverter::convert() runs -- this command has
+        // its own mini-converter (backend.parse() directly, not through
+        // convert()) so it needs them applied here too.
+        sparq.materialize_rdfs(ruddydoc_ontology::ONTOLOGY_GRAPH, &doc_graph)?;
+        sparq.record_conversion_provenance(&doc_graph, &ruddydoc_core::source_iri(&hash_str))?;
     }
 
     // Execute the query.
@@ -645,8 +666,8 @@ fn run_query(args: &QueryArgs) -> ruddydoc_core::Result<()> {
 /// Convert a file and insert its triples into an existing store.
 fn convert_into_store(
     input: &Path,
-    store: &ruddydoc_graph::OxigraphStore,
-) -> ruddydoc_core::Result<String> {
+    store: &dyn DocumentStore,
+) -> ruddydoc_core::Result<(String, String)> {
     let bytes = std::fs::read(input)?;
     let file_size = bytes.len() as u64;
     let source = DocumentSource::Stream {
@@ -687,7 +708,7 @@ fn convert_into_store(
         file_size
     );
 
-    Ok(doc_graph)
+    Ok((doc_graph, hash_str))
 }
 
 /// Print query results as a formatted ASCII table.
@@ -821,6 +842,24 @@ fn run_chunk(args: &ChunkArgs) -> ruddydoc_core::Result<()> {
 // serve (stub)
 // ---------------------------------------------------------------------------
 
+#[cfg(feature = "server")]
+fn run_serve(args: &ServeArgs) {
+    let rt = tokio::runtime::Runtime::new().expect("failed to create tokio runtime");
+    if args.mcp {
+        if let Err(e) = rt.block_on(ruddydoc_server::start_mcp_stdio()) {
+            eprintln!("MCP server error: {e}");
+            std::process::exit(1);
+        }
+    } else {
+        eprintln!("RuddyDoc HTTP server starting on port {}", args.port);
+        if let Err(e) = rt.block_on(ruddydoc_server::start_http_server(args.port)) {
+            eprintln!("HTTP server error: {e}");
+            std::process::exit(1);
+        }
+    }
+}
+
+#[cfg(not(feature = "server"))]
 fn run_serve(args: &ServeArgs) {
     if args.mcp {
         eprintln!(

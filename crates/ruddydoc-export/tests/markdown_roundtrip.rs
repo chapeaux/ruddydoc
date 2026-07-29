@@ -9,14 +9,14 @@
 
 use ruddydoc_core::{DocumentBackend, DocumentExporter, DocumentSource, DocumentStore};
 use ruddydoc_export::{JsonExporter, MarkdownExporter, NTriplesExporter, TurtleExporter};
-use ruddydoc_graph::OxigraphStore;
+use ruddydoc_graph::SparqStore;
 use ruddydoc_ontology as ont;
 
 const SAMPLE_MD: &str = include_str!("../../../tests/fixtures/sample.md");
 
 /// Set up a parsed document in the store.
-fn setup() -> (OxigraphStore, String) {
-    let store = OxigraphStore::new().expect("failed to create store");
+fn setup() -> (SparqStore, String) {
+    let store = SparqStore::new().expect("failed to create store");
     let backend = ruddydoc_backend_md::MarkdownBackend::new();
 
     let source = DocumentSource::Stream {

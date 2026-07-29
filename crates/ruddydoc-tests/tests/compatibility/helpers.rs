@@ -1,7 +1,7 @@
 //! Shared test helpers for compatibility testing.
 
 use ruddydoc_core::{DocumentBackend, DocumentExporter, DocumentSource, DocumentStore};
-use ruddydoc_graph::OxigraphStore;
+use ruddydoc_graph::SparqStore;
 use ruddydoc_ontology as ont;
 use serde_json::Value;
 use sha2::{Digest, Sha256};
@@ -12,7 +12,7 @@ use std::path::Path;
 pub fn parse_file<B: DocumentBackend>(
     backend: &B,
     path: impl AsRef<Path>,
-) -> (OxigraphStore, String) {
+) -> (SparqStore, String) {
     // Resolve path relative to workspace root
     let workspace_root = std::env::var("CARGO_MANIFEST_DIR")
         .map(|p| {
@@ -39,8 +39,8 @@ pub fn parse_bytes<B: DocumentBackend>(
     backend: &B,
     name: &str,
     data: &[u8],
-) -> (OxigraphStore, String) {
-    let store = OxigraphStore::new().expect("failed to create store");
+) -> (SparqStore, String) {
+    let store = SparqStore::new().expect("failed to create store");
     ont::load_ontology(&store).expect("failed to load ontology");
 
     let hash = compute_hash(data);
@@ -63,7 +63,7 @@ pub fn parse_string<B: DocumentBackend>(
     backend: &B,
     name: &str,
     content: &str,
-) -> (OxigraphStore, String) {
+) -> (SparqStore, String) {
     parse_bytes(backend, name, content.as_bytes())
 }
 
@@ -80,7 +80,7 @@ pub fn compute_hash(data: &[u8]) -> String {
 }
 
 /// Count elements of a given class in the document graph.
-pub fn count_elements(store: &OxigraphStore, graph: &str, class: &str) -> usize {
+pub fn count_elements(store: &SparqStore, graph: &str, class: &str) -> usize {
     let sparql = format!(
         "SELECT (COUNT(?e) AS ?count) WHERE {{ GRAPH <{graph}> {{ ?e a <{}> }} }}",
         ont::iri(class)
@@ -90,37 +90,37 @@ pub fn count_elements(store: &OxigraphStore, graph: &str, class: &str) -> usize 
 }
 
 /// Count all paragraphs.
-pub fn count_paragraphs(store: &OxigraphStore, graph: &str) -> usize {
+pub fn count_paragraphs(store: &SparqStore, graph: &str) -> usize {
     count_elements(store, graph, ont::CLASS_PARAGRAPH)
 }
 
 /// Count all section headers.
-pub fn count_headings(store: &OxigraphStore, graph: &str) -> usize {
+pub fn count_headings(store: &SparqStore, graph: &str) -> usize {
     count_elements(store, graph, ont::CLASS_SECTION_HEADER)
 }
 
 /// Count all list items.
-pub fn count_list_items(store: &OxigraphStore, graph: &str) -> usize {
+pub fn count_list_items(store: &SparqStore, graph: &str) -> usize {
     count_elements(store, graph, ont::CLASS_LIST_ITEM)
 }
 
 /// Count all code blocks.
-pub fn count_code_blocks(store: &OxigraphStore, graph: &str) -> usize {
+pub fn count_code_blocks(store: &SparqStore, graph: &str) -> usize {
     count_elements(store, graph, ont::CLASS_CODE)
 }
 
 /// Count all tables.
-pub fn count_tables(store: &OxigraphStore, graph: &str) -> usize {
+pub fn count_tables(store: &SparqStore, graph: &str) -> usize {
     count_elements(store, graph, ont::CLASS_TABLE_ELEMENT)
 }
 
 /// Count all pictures.
-pub fn count_pictures(store: &OxigraphStore, graph: &str) -> usize {
+pub fn count_pictures(store: &SparqStore, graph: &str) -> usize {
     count_elements(store, graph, ont::CLASS_PICTURE_ELEMENT)
 }
 
 /// Get reading orders of all elements.
-pub fn get_reading_orders(store: &OxigraphStore, graph: &str) -> Vec<i64> {
+pub fn get_reading_orders(store: &SparqStore, graph: &str) -> Vec<i64> {
     let sparql = format!(
         "SELECT ?order WHERE {{ GRAPH <{graph}> {{ ?e <{}> ?order }} }} ORDER BY ?order",
         ont::iri(ont::PROP_READING_ORDER)
@@ -165,7 +165,7 @@ pub fn clean_literal(s: &str) -> String {
 }
 
 /// Export and parse result as JSON.
-pub fn export_json(store: &OxigraphStore, graph: &str) -> Value {
+pub fn export_json(store: &SparqStore, graph: &str) -> Value {
     let exporter = ruddydoc_export::JsonExporter;
     let json_str = exporter.export(store, graph).expect("export failed");
     serde_json::from_str(&json_str).expect("invalid JSON")

@@ -911,10 +911,10 @@ fn extract_source_language(attr: &str) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ruddydoc_graph::OxigraphStore;
+    use ruddydoc_graph::SparqStore;
 
-    fn parse_asciidoc(adoc: &str) -> ruddydoc_core::Result<(OxigraphStore, DocumentMeta, String)> {
-        let store = OxigraphStore::new()?;
+    fn parse_asciidoc(adoc: &str) -> ruddydoc_core::Result<(SparqStore, DocumentMeta, String)> {
+        let store = SparqStore::new()?;
         let backend = AsciiDocBackend::new();
         let source = DocumentSource::Stream {
             name: "test.adoc".to_string(),

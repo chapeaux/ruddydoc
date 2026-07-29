@@ -409,10 +409,10 @@ impl DocumentBackend for WebVttBackend {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ruddydoc_graph::OxigraphStore;
+    use ruddydoc_graph::SparqStore;
 
-    fn parse_webvtt(vtt: &str) -> ruddydoc_core::Result<(OxigraphStore, DocumentMeta, String)> {
-        let store = OxigraphStore::new()?;
+    fn parse_webvtt(vtt: &str) -> ruddydoc_core::Result<(SparqStore, DocumentMeta, String)> {
+        let store = SparqStore::new()?;
         let backend = WebVttBackend::new();
         let source = DocumentSource::Stream {
             name: "test.vtt".to_string(),

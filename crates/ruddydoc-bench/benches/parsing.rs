@@ -10,7 +10,7 @@ use ruddydoc_bench::{
     generate_large_markdown,
 };
 use ruddydoc_core::{DocumentBackend, DocumentSource};
-use ruddydoc_graph::OxigraphStore;
+use ruddydoc_graph::SparqStore;
 
 // ---------------------------------------------------------------------------
 // Markdown parsing
@@ -25,7 +25,7 @@ fn bench_markdown_parsing(c: &mut Criterion) {
 
     c.bench_function("parse_markdown_fixture", |b| {
         b.iter(|| {
-            let store = OxigraphStore::new().expect("store");
+            let store = SparqStore::new().expect("store");
             let backend = ruddydoc_backend_md::MarkdownBackend::new();
             let source = DocumentSource::Stream {
                 name: "bench.md".to_string(),
@@ -53,7 +53,7 @@ fn bench_markdown_scaling(c: &mut Criterion) {
             &(content, doc_graph),
             |b, (content, doc_graph)| {
                 b.iter(|| {
-                    let store = OxigraphStore::new().expect("store");
+                    let store = SparqStore::new().expect("store");
                     let backend = ruddydoc_backend_md::MarkdownBackend::new();
                     let source = DocumentSource::Stream {
                         name: "bench.md".to_string(),
@@ -83,7 +83,7 @@ fn bench_html_parsing(c: &mut Criterion) {
 
     c.bench_function("parse_html_fixture", |b| {
         b.iter(|| {
-            let store = OxigraphStore::new().expect("store");
+            let store = SparqStore::new().expect("store");
             let backend = ruddydoc_backend_html::HtmlBackend;
             let source = DocumentSource::Stream {
                 name: "bench.html".to_string(),
@@ -111,7 +111,7 @@ fn bench_html_scaling(c: &mut Criterion) {
             &(content, doc_graph),
             |b, (content, doc_graph)| {
                 b.iter(|| {
-                    let store = OxigraphStore::new().expect("store");
+                    let store = SparqStore::new().expect("store");
                     let backend = ruddydoc_backend_html::HtmlBackend;
                     let source = DocumentSource::Stream {
                         name: "bench.html".to_string(),
@@ -141,7 +141,7 @@ fn bench_csv_parsing(c: &mut Criterion) {
 
     c.bench_function("parse_csv_fixture", |b| {
         b.iter(|| {
-            let store = OxigraphStore::new().expect("store");
+            let store = SparqStore::new().expect("store");
             let backend = ruddydoc_backend_csv::CsvBackend;
             let source = DocumentSource::Stream {
                 name: "bench.csv".to_string(),
@@ -169,7 +169,7 @@ fn bench_csv_scaling(c: &mut Criterion) {
             &(content, doc_graph),
             |b, (content, doc_graph)| {
                 b.iter(|| {
-                    let store = OxigraphStore::new().expect("store");
+                    let store = SparqStore::new().expect("store");
                     let backend = ruddydoc_backend_csv::CsvBackend;
                     let source = DocumentSource::Stream {
                         name: "bench.csv".to_string(),
@@ -199,7 +199,7 @@ fn bench_latex_parsing(c: &mut Criterion) {
 
     c.bench_function("parse_latex_fixture", |b| {
         b.iter(|| {
-            let store = OxigraphStore::new().expect("store");
+            let store = SparqStore::new().expect("store");
             let backend = ruddydoc_backend_latex::LatexBackend;
             let source = DocumentSource::Stream {
                 name: "bench.tex".to_string(),
@@ -227,7 +227,7 @@ fn bench_latex_scaling(c: &mut Criterion) {
             &(content, doc_graph),
             |b, (content, doc_graph)| {
                 b.iter(|| {
-                    let store = OxigraphStore::new().expect("store");
+                    let store = SparqStore::new().expect("store");
                     let backend = ruddydoc_backend_latex::LatexBackend;
                     let source = DocumentSource::Stream {
                         name: "bench.tex".to_string(),

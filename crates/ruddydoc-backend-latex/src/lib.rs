@@ -1380,10 +1380,10 @@ impl DocumentBackend for LatexBackend {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ruddydoc_graph::OxigraphStore;
+    use ruddydoc_graph::SparqStore;
 
-    fn parse_latex(latex: &str) -> ruddydoc_core::Result<(OxigraphStore, DocumentMeta, String)> {
-        let store = OxigraphStore::new()?;
+    fn parse_latex(latex: &str) -> ruddydoc_core::Result<(SparqStore, DocumentMeta, String)> {
+        let store = SparqStore::new()?;
         let backend = LatexBackend::new();
         let source = DocumentSource::Stream {
             name: "test.tex".to_string(),
@@ -2151,7 +2151,7 @@ Paragraph two.";
             std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/sample.tex");
         let content = std::fs::read_to_string(&fixture_path)?;
 
-        let store = OxigraphStore::new()?;
+        let store = SparqStore::new()?;
         let backend = LatexBackend::new();
         let source = DocumentSource::Stream {
             name: "sample.tex".to_string(),

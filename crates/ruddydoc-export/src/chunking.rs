@@ -820,11 +820,11 @@ fn query_document_language(
 mod tests {
     use super::*;
     use ruddydoc_core::{DocumentBackend, DocumentSource};
-    use ruddydoc_graph::OxigraphStore;
+    use ruddydoc_graph::SparqStore;
 
     /// Parse markdown into a store and return the store and graph IRI.
-    fn parse_md(md: &str) -> ruddydoc_core::Result<(OxigraphStore, String)> {
-        let store = OxigraphStore::new()?;
+    fn parse_md(md: &str) -> ruddydoc_core::Result<(SparqStore, String)> {
+        let store = SparqStore::new()?;
         let backend = ruddydoc_backend_md::MarkdownBackend::new();
         let source = DocumentSource::Stream {
             name: "test.md".to_string(),
