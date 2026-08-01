@@ -199,15 +199,47 @@ fn heading_level(tag: &str) -> Option<u8> {
     }
 }
 
-/// Collect all direct text content from an element (concatenation of text nodes
-/// at any depth within this element).
-fn collect_text(element: &ElementRef<'_>) -> String {
+/// Collect all text content from an element (concatenation of text nodes at
+/// any depth within this element), preserving whitespace verbatim. Used for
+/// `<pre>`/`<code>` where whitespace is semantically significant.
+fn collect_raw_text(element: &ElementRef<'_>) -> String {
     element
         .text()
         .collect::<Vec<_>>()
         .join("")
         .trim()
         .to_string()
+}
+
+/// Collapse runs of whitespace (spaces, tabs, newlines from pretty-printed
+/// source) into a single space and trim the ends, matching how a browser
+/// renders inter-element whitespace in HTML.
+fn normalize_whitespace(s: &str) -> String {
+    let mut result = String::with_capacity(s.len());
+    let mut last_was_space = true; // suppresses leading whitespace
+    for c in s.chars() {
+        if c.is_whitespace() {
+            if !last_was_space {
+                result.push(' ');
+            }
+            last_was_space = true;
+        } else {
+            result.push(c);
+            last_was_space = false;
+        }
+    }
+    if result.ends_with(' ') {
+        result.pop();
+    }
+    result
+}
+
+/// Collect all text content from an element (concatenation of text nodes
+/// at any depth within this element), with whitespace normalized per HTML
+/// rendering rules. Used for prose elements (headings, paragraphs, table
+/// cells, links, captions).
+fn collect_text(element: &ElementRef<'_>) -> String {
+    normalize_whitespace(&collect_raw_text(element))
 }
 
 /// Check whether an element is a `<pre>` that contains a `<code>` child.
@@ -237,6 +269,45 @@ fn extract_code_language(element: &ElementRef<'_>) -> Option<String> {
     classes.split_whitespace().next().map(|s| s.to_string())
 }
 
+/// Collect direct child elements of `element` whose tag name is `tag`.
+/// Unlike `Selector`-based `.select()`, this never matches descendants at
+/// deeper levels (e.g. inside a nested `<table>`).
+fn direct_children_by_tag<'a>(element: &ElementRef<'a>, tag: &str) -> Vec<ElementRef<'a>> {
+    element
+        .children()
+        .filter_map(ElementRef::wrap)
+        .filter(|el| el.value().name() == tag)
+        .collect()
+}
+
+/// Collect the `<tr>` rows belonging directly to a table: either direct
+/// `<tr>` children, or `<tr>` children of a direct `<thead>`/`<tbody>`/
+/// `<tfoot>` wrapper. Never descends into a nested `<table>` (which can only
+/// appear inside a cell), so a table nested in a `<td>` cannot corrupt the
+/// outer table's row/column counts.
+fn table_rows<'a>(table: &ElementRef<'a>) -> Vec<ElementRef<'a>> {
+    let mut rows = Vec::new();
+    for child in table.children().filter_map(ElementRef::wrap) {
+        match child.value().name() {
+            "tr" => rows.push(child),
+            "thead" | "tbody" | "tfoot" => {
+                rows.extend(direct_children_by_tag(&child, "tr"));
+            }
+            _ => {}
+        }
+    }
+    rows
+}
+
+/// Collect the `<th>`/`<td>` cells that are direct children of a `<tr>`, in
+/// document order.
+fn table_row_cells<'a>(tr: &ElementRef<'a>) -> Vec<ElementRef<'a>> {
+    tr.children()
+        .filter_map(ElementRef::wrap)
+        .filter(|el| matches!(el.value().name(), "th" | "td"))
+        .collect()
+}
+
 /// Process a `<table>` element, emitting table and cell triples.
 fn process_table(
     ctx: &mut ParseContext<'_>,
@@ -245,52 +316,28 @@ fn process_table(
     let table_iri = ctx.element_iri("table");
     ctx.emit_element(&table_iri, ont::CLASS_TABLE_ELEMENT)?;
 
-    let tr_sel = Selector::parse("tr").expect("valid selector");
-    let th_sel = Selector::parse("th").expect("valid selector");
-    let td_sel = Selector::parse("td").expect("valid selector");
-
     let mut row_count: usize = 0;
     let mut max_col: usize = 0;
 
-    for tr in element.select(&tr_sel) {
+    for tr in table_rows(element) {
         let mut col: usize = 0;
 
-        // Process th cells
-        for th in tr.select(&th_sel) {
-            let text = collect_text(&th);
-            let row_span = th
+        for cell in table_row_cells(&tr) {
+            let is_header = cell.value().name() == "th";
+            let text = collect_text(&cell);
+            let row_span = cell
                 .value()
                 .attr("rowspan")
                 .and_then(|v| v.parse::<usize>().ok())
                 .unwrap_or(1);
-            let col_span = th
+            let col_span = cell
                 .value()
                 .attr("colspan")
                 .and_then(|v| v.parse::<usize>().ok())
                 .unwrap_or(1);
 
             emit_table_cell(
-                ctx, &table_iri, &text, row_count, col, true, row_span, col_span,
-            )?;
-            col += col_span;
-        }
-
-        // Process td cells
-        for td in tr.select(&td_sel) {
-            let text = collect_text(&td);
-            let row_span = td
-                .value()
-                .attr("rowspan")
-                .and_then(|v| v.parse::<usize>().ok())
-                .unwrap_or(1);
-            let col_span = td
-                .value()
-                .attr("colspan")
-                .and_then(|v| v.parse::<usize>().ok())
-                .unwrap_or(1);
-
-            emit_table_cell(
-                ctx, &table_iri, &text, row_count, col, false, row_span, col_span,
+                ctx, &table_iri, &text, row_count, col, is_header, row_span, col_span,
             )?;
             col += col_span;
         }
@@ -567,8 +614,9 @@ fn process_element(
             return process_code_block(ctx, element);
         }
         "pre" => {
-            // Plain <pre> without <code> -- treat as a paragraph
-            let text = collect_text(element);
+            // Plain <pre> without <code> -- treat as a paragraph, but
+            // preserve whitespace since <pre> is semantically preformatted
+            let text = collect_raw_text(element);
             if !text.is_empty() {
                 let iri = ctx.element_iri("paragraph");
                 ctx.emit_element(&iri, ont::CLASS_PARAGRAPH)?;
@@ -775,13 +823,13 @@ fn collect_direct_text(element: &ElementRef<'_>) -> String {
                 if !matches!(tag, "ul" | "ol" | "table" | "figure" | "pre" | "blockquote")
                     && let Some(child_el) = ElementRef::wrap(child)
                 {
-                    text.push_str(&collect_text(&child_el));
+                    text.push_str(&collect_raw_text(&child_el));
                 }
             }
             _ => {}
         }
     }
-    text.trim().to_string()
+    normalize_whitespace(&text)
 }
 
 /// Check if a tag name is a container whose children we recurse into.
@@ -794,7 +842,7 @@ fn process_code_block(
     ctx: &mut ParseContext<'_>,
     element: &ElementRef<'_>,
 ) -> ruddydoc_core::Result<()> {
-    let text = collect_text(element);
+    let text = collect_raw_text(element);
     let iri = ctx.element_iri("code");
     ctx.emit_element(&iri, ont::CLASS_CODE)?;
     ctx.set_text_content(&iri, &text)?;
@@ -1201,6 +1249,145 @@ mod tests {
             .expect("expected Spans 2 rows cell");
         let rs = rowspan_cell["rs"].as_str().expect("rs");
         assert!(rs.contains('2'));
+
+        Ok(())
+    }
+
+    #[test]
+    fn nested_table_does_not_corrupt_outer_table() -> ruddydoc_core::Result<()> {
+        // RuddyDoc doesn't independently emit tables nested inside a cell
+        // (cells only hold flat text), but the outer table's row/column
+        // counts must not be polluted by the nested table's own rows/cells.
+        let html = r#"<html><body>
+            <table>
+                <tr><td>Outer A
+                    <table>
+                        <tr><td>Inner 1</td><td>Inner 2</td><td>Inner 3</td></tr>
+                    </table>
+                </td><td>Outer B</td></tr>
+            </table>
+        </body></html>"#;
+        let (store, _meta, graph) = parse_html(html)?;
+
+        let sparql_tables = format!(
+            "SELECT ?t ?rows ?cols WHERE {{ \
+               GRAPH <{graph}> {{ \
+                 ?t a <{}>. \
+                 ?t <{}> ?rows. \
+                 ?t <{}> ?cols \
+               }} \
+             }}",
+            ont::iri(ont::CLASS_TABLE_ELEMENT),
+            ont::iri(ont::PROP_ROW_COUNT),
+            ont::iri(ont::PROP_COLUMN_COUNT),
+        );
+        let result = store.query_to_json(&sparql_tables)?;
+        let rows = result.as_array().expect("expected array");
+        assert_eq!(rows.len(), 1, "expected exactly the outer table");
+
+        // Before the fix, `.select()` also matched the nested table's <tr>
+        // (making row_count 2) and its 3 <td> (making column_count 5).
+        let row_count = rows[0]["rows"].as_str().expect("rows");
+        assert!(
+            row_count.contains('1'),
+            "expected row_count 1, got {row_count:?}"
+        );
+        let col_count = rows[0]["cols"].as_str().expect("cols");
+        assert!(
+            col_count.contains('2'),
+            "expected column_count 2, got {col_count:?}"
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn table_rows_with_thead_tbody_wrapper() -> ruddydoc_core::Result<()> {
+        let html = r#"<html><body>
+            <table>
+                <thead><tr><th>Name</th><th>Age</th></tr></thead>
+                <tbody>
+                    <tr><td>Alice</td><td>30</td></tr>
+                    <tr><td>Bob</td><td>25</td></tr>
+                </tbody>
+            </table>
+        </body></html>"#;
+        let (store, _meta, graph) = parse_html(html)?;
+
+        let sparql = format!(
+            "SELECT ?t ?rows WHERE {{ \
+               GRAPH <{graph}> {{ \
+                 ?t a <{}>. \
+                 ?t <{}> ?rows \
+               }} \
+             }}",
+            ont::iri(ont::CLASS_TABLE_ELEMENT),
+            ont::iri(ont::PROP_ROW_COUNT),
+        );
+        let result = store.query_to_json(&sparql)?;
+        let rows = result.as_array().expect("expected array");
+        assert_eq!(rows.len(), 1);
+        let row_count = rows[0]["rows"].as_str().expect("rows");
+        assert!(row_count.contains('3'));
+
+        Ok(())
+    }
+
+    #[test]
+    fn collect_text_collapses_pretty_printed_whitespace() -> ruddydoc_core::Result<()> {
+        let html = "<html><body><p>\n    Line one\n    Line two\n</p></body></html>";
+        let (store, _meta, graph) = parse_html(html)?;
+
+        let sparql = format!(
+            "SELECT ?text WHERE {{ \
+               GRAPH <{graph}> {{ \
+                 ?p a <{}>. \
+                 ?p <{}> ?text \
+               }} \
+             }}",
+            ont::iri(ont::CLASS_PARAGRAPH),
+            ont::iri(ont::PROP_TEXT_CONTENT),
+        );
+        let result = store.query_to_json(&sparql)?;
+        let rows = result.as_array().expect("expected array");
+        assert_eq!(rows.len(), 1);
+        let text = rows[0]["text"].as_str().expect("text");
+        assert!(
+            text.contains("Line one Line two"),
+            "expected collapsed whitespace, got {text:?}"
+        );
+        assert!(!text.contains('\n'), "expected no raw newlines, got {text:?}");
+
+        Ok(())
+    }
+
+    #[test]
+    fn code_block_preserves_whitespace() -> ruddydoc_core::Result<()> {
+        let html =
+            "<html><body><pre><code>fn main() {\n    println!(\"hi\");\n}</code></pre></body></html>";
+        let (store, _meta, graph) = parse_html(html)?;
+
+        let sparql = format!(
+            "SELECT ?text WHERE {{ \
+               GRAPH <{graph}> {{ \
+                 ?c a <{}>. \
+                 ?c <{}> ?text \
+               }} \
+             }}",
+            ont::iri(ont::CLASS_CODE),
+            ont::iri(ont::PROP_TEXT_CONTENT),
+        );
+        let result = store.query_to_json(&sparql)?;
+        let rows = result.as_array().expect("expected array");
+        assert_eq!(rows.len(), 1);
+        // query_to_json renders literals via their Turtle/N-Triples form
+        // (escaped, quoted), so a real newline round-trips as a literal
+        // backslash-n escape sequence rather than a raw control character.
+        let text = rows[0]["text"].as_str().expect("text");
+        assert!(
+            text.contains("fn main() {\\n    println"),
+            "expected preserved newline/indentation, got {text:?}"
+        );
 
         Ok(())
     }

@@ -156,6 +156,87 @@ Vector search and natural-language querying need an external HTTP endpoint (Open
 | `validate_document` | Re-check SHACL conformance on demand |
 | `canonicalize_document` | RDFC-1.0 canonical-graph hash on demand |
 
+## Example use cases
+
+Concrete workflows, from a single CLI call to a full agentic pipeline. The MCP examples show raw tool-call arguments/results so you can see exactly what an agent framework (Claude Desktop, LM Studio, a custom LangGraph/agent-SDK loop) sends and gets back over `ruddydoc serve --mcp`.
+
+### AI agent workflows
+
+**Grounded Q&A without blowing the context window.** Instead of pasting an entire PDF into an LLM's prompt, an agent converts it once and then asks questions against the graph instead of the raw text:
+
+```json
+{"tool": "convert_document", "arguments": {"source": "/data/quarterly-report.pdf"}}
+-> {"id": "a1b2c3...", "format": "Pdf", "page_count": 42, "validation": {"conforms": true, "results": []}}
+
+{"tool": "ask_document", "arguments": {"document_id": "a1b2c3...", "question": "What was revenue growth in Q3?"}}
+-> {"sparql": "SELECT ?text WHERE { ... }", "result": [{"text": "..."}], "repairs": 0}
+```
+
+The response includes the generated SPARQL (`sparql`) and how many self-repair attempts it took (`repairs`) -- an agent, or a human reviewing its trace, can check the answer is actually backed by a query over the document instead of trusting an LLM's unverified recollection of the text. This also means only the question and a handful of matched triples ever enter the LLM's context, not the whole document.
+
+**Multi-document research assistant.** Point a single query at several sources -- each gets its own named graph inside one shared store, so one SPARQL query can join across them:
+
+```bash
+ruddydoc query 'SELECT ?doc ?text WHERE {
+  GRAPH ?doc { ?el <https://ruddydoc.chapeaux.io/ontology#textContent> ?text }
+  FILTER(CONTAINS(?text, "supply chain"))
+}' q1-earnings.pdf q2-earnings.pdf q3-earnings.pdf
+```
+
+An agent doing the equivalent over MCP converts each source with `convert_document`, uses `list_documents` to keep track of what's loaded in the session, and calls `search_text` or `ask_document` per document to compare findings across the set -- without ever holding all three documents' text in its own context at once.
+
+**RAG chatbot backend with no vector database.** Ingest once at startup, then answer live queries by embedding and searching in-memory:
+
+```json
+{"tool": "embed_document", "arguments": {"document_id": "a1b2c3...", "max_tokens": 512}}
+{"tool": "semantic_search", "arguments": {"document_id": "a1b2c3...", "query": "how do we handle returns?", "limit": 5}}
+-> {"result": [{"chunk": "...", "score": 0.87}, ...]}
+```
+
+Feed the top-k chunks into your own LLM call as context. No Pinecone/Qdrant/pgvector to run -- the embeddings live in the same process as the graph.
+
+**Self-verifying pipeline for untrusted input.** An agent ingesting user-uploaded documents shouldn't blindly trust extraction results. `convert_document`'s response already includes the SHACL conformance report (no second call needed for the initial check), and `canonicalize_document`/`validate_document` are there to re-check on demand after the graph changes:
+
+```json
+{"tool": "convert_document", "arguments": {"source": "/uploads/user-submitted.docx"}}
+-> {"id": "a1b2c3...", "format": "Docx", "validation": {"conforms": true, "results": []}}
+
+{"tool": "canonicalize_document", "arguments": {"document_id": "a1b2c3..."}}
+-> {"canonical_hash": "8ab2da25fa49285a9fa6538901da7831976e5e457e76826e8e05b619b82b8ee2"}
+```
+
+If `validation.conforms` is `false`, the agent can branch to a fallback path or flag the document for human review instead of feeding malformed structure downstream. The canonical hash plus the automatically-recorded PROV-O lineage (`prov:wasGeneratedBy`, `prov:used`) gives a standards-compliant record of exactly which conversion activity produced which graph, from which source -- useful evidence in a compliance-sensitive pipeline.
+
+**Content-addressed deduplication across formats.** The same report submitted once as a PDF and later as a re-typed DOCX produces different source bytes but, if the extracted content matches, the *same* canonical hash -- because `--canonical-hash`/`canonicalize_document` hashes the derived RDF graph, not the source file:
+
+```bash
+ruddydoc convert report-v1.pdf --canonical-hash   # canonical hash: 8ab2da25...
+ruddydoc convert report-v1.docx --canonical-hash  # canonical hash: 8ab2da25... (same)
+```
+
+An ingestion agent can use this hash as a cache/dedup key to skip reprocessing semantically-identical documents regardless of which format they arrived in.
+
+### Other workflows
+
+**CI/CD documentation quality gate.** Every conversion carries a SHACL conformance report; a CI job driving `ruddydoc serve --mcp` can gate a merge on it instead of silently accepting malformed docs:
+
+```json
+{"tool": "convert_document", "arguments": {"source": "docs/getting-started.md"}}
+-> {"id": "...", "validation": {"conforms": false, "results": [
+     {"message": "Missing required property: rdoc:textContent", "focusNode": "urn:...#paragraph-3"}
+   ]}}
+```
+
+A build step that converts every changed doc this way and fails when `validation.conforms` is `false` catches structural problems (missing headings, malformed tables) before they ship -- the same check that already runs on every conversion, just enforced instead of ignored.
+
+**Batch knowledge-base ingestion.** Convert a directory of mixed-format documents (PDF, DOCX, HTML, Markdown) into one queryable graph for an internal search or wiki tool:
+
+```bash
+ruddydoc convert ./handbook/*.{pdf,docx,md,html} --format turtle --output ./kb/
+```
+
+Serve the resulting graph behind `query_document`/`search_text`/`semantic_search` for engineers to search across the whole handbook by meaning, not just keyword.
+
 ## Benchmarks
 
 Measured with Criterion on this repository's own hardware (`cargo bench -p ruddydoc-bench`); numbers vary by machine but the relative shape holds. All conversion numbers below go through the real `DocumentConverter::convert()` path, including RDFS materialization, SHACL validation, and PROV-O lineage recording -- there's no separate "fast path" that skips the semantic layer.

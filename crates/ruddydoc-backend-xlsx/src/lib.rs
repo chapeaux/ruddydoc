@@ -5,7 +5,7 @@
 //! becomes a separate `rdoc:TableElement`, and each cell becomes a
 //! `rdoc:TableCell` with row/column indices and text content.
 
-use calamine::{Data, Reader, open_workbook_auto, open_workbook_auto_from_rs};
+use calamine::{Data, Dimensions, Reader, Sheets, open_workbook_auto, open_workbook_auto_from_rs};
 use sha2::{Digest, Sha256};
 
 use ruddydoc_core::{
@@ -51,6 +51,26 @@ fn cell_to_string(cell: &Data) -> String {
     match cell {
         Data::Empty => String::new(),
         other => other.to_string(),
+    }
+}
+
+/// Fetch the merged-cell regions for a worksheet, if the concrete workbook
+/// format exposes them. `open_workbook_auto`'s generic `Reader` trait has no
+/// merge-cell method (that API only exists on the concrete `Xlsx`/`Xls`
+/// structs), so this matches on the `Sheets` variant to reach it. Xlsb/Ods
+/// have no merge-cell support in calamine and fall back to an empty list --
+/// `is_valid` only accepts `.xlsx`/`.xls` anyway.
+fn merge_cells_for_sheet<RS>(workbook: &mut Sheets<RS>, name: &str) -> Vec<Dimensions>
+where
+    RS: std::io::Read + std::io::Seek,
+{
+    match workbook {
+        Sheets::Xlsx(wb) => wb
+            .worksheet_merge_cells(name)
+            .and_then(|r| r.ok())
+            .unwrap_or_default(),
+        Sheets::Xls(wb) => wb.worksheet_merge_cells(name).unwrap_or_default(),
+        _ => Vec::new(),
     }
 }
 
@@ -102,7 +122,7 @@ impl DocumentBackend for XlsxBackend {
 
         // Open workbook: use path-based opener for files (better extension detection),
         // fall back to stream-based opener for in-memory data.
-        let sheets: Vec<(String, Vec<Vec<Data>>)> = match source {
+        let sheets: Vec<(String, Vec<Vec<Data>>, Vec<Dimensions>)> = match source {
             DocumentSource::File(path) => {
                 let mut workbook = open_workbook_auto(path)?;
                 let sheet_names = workbook.sheet_names().to_vec();
@@ -110,7 +130,8 @@ impl DocumentBackend for XlsxBackend {
                 for name in sheet_names {
                     let range = workbook.worksheet_range(&name)?;
                     let rows: Vec<Vec<Data>> = range.rows().map(|r| r.to_vec()).collect();
-                    result.push((name, rows));
+                    let merges = merge_cells_for_sheet(&mut workbook, &name);
+                    result.push((name, rows, merges));
                 }
                 result
             }
@@ -122,7 +143,8 @@ impl DocumentBackend for XlsxBackend {
                 for name in sheet_names {
                     let range = workbook.worksheet_range(&name)?;
                     let rows: Vec<Vec<Data>> = range.rows().map(|r| r.to_vec()).collect();
-                    result.push((name, rows));
+                    let merges = merge_cells_for_sheet(&mut workbook, &name);
+                    result.push((name, rows, merges));
                 }
                 result
             }
@@ -164,7 +186,7 @@ impl DocumentBackend for XlsxBackend {
         )?;
 
         // Process each worksheet as a separate TableElement
-        for (sheet_idx, (sheet_name, rows)) in sheets.iter().enumerate() {
+        for (sheet_idx, (sheet_name, rows, merges)) in sheets.iter().enumerate() {
             let table_iri = ruddydoc_core::element_iri(&hash_str, &format!("table-{sheet_idx}"));
 
             store.insert_triple_into(
@@ -214,10 +236,24 @@ impl DocumentBackend for XlsxBackend {
                 g,
             )?;
 
-            // Insert cells
+            // Insert cells. A merged region only gets one TableCell, anchored
+            // at its top-left position and carrying the region's row/col
+            // span; every other position it covers is skipped rather than
+            // emitted as its own blank cell.
             for (row_idx, row) in rows.iter().enumerate() {
                 let is_header = row_idx == 0;
                 for col_idx in 0..max_cols {
+                    let pos = (row_idx as u32, col_idx as u32);
+                    let covering_merge = merges.iter().find(|d| d.contains(pos.0, pos.1));
+                    if let Some(merge) = covering_merge
+                        && merge.start != pos
+                    {
+                        continue;
+                    }
+                    let (row_span, col_span) = covering_merge
+                        .map(|d| (d.end.0 - d.start.0 + 1, d.end.1 - d.start.1 + 1))
+                        .unwrap_or((1, 1));
+
                     let cell = row.get(col_idx).unwrap_or(&Data::Empty);
                     let cell_text = cell_to_string(cell);
 
@@ -266,16 +302,23 @@ impl DocumentBackend for XlsxBackend {
                         "boolean",
                         g,
                     )?;
+                    store.insert_literal(
+                        &cell_iri,
+                        &ont::iri(ont::PROP_CELL_ROW_SPAN),
+                        &row_span.to_string(),
+                        "integer",
+                        g,
+                    )?;
+                    store.insert_literal(
+                        &cell_iri,
+                        &ont::iri(ont::PROP_CELL_COL_SPAN),
+                        &col_span.to_string(),
+                        "integer",
+                        g,
+                    )?;
                 }
             }
         }
-
-        // TODO: Merged cell detection. Calamine's `Xlsx::load_merged_regions()`
-        // and `Xlsx::merged_regions_by_sheet()` are available on the concrete
-        // `Xlsx` type but not on the generic `Sheets` enum returned by
-        // `open_workbook_auto`. Supporting this would require type-specific
-        // handling or opening the workbook as `Xlsx` directly. For now, all
-        // cells are treated as single-cell spans.
 
         Ok(DocumentMeta {
             file_path,
@@ -301,6 +344,16 @@ mod tests {
     /// Build a minimal XLSX file in memory with the given sheets.
     /// Each sheet is a tuple of (name, rows) where rows is a Vec<Vec<String>>.
     fn build_xlsx(sheets: &[(&str, &[&[&str]])]) -> Vec<u8> {
+        let with_merges: Vec<(&str, &[&[&str]], &[&str])> = sheets
+            .iter()
+            .map(|(name, rows)| (*name, *rows, &[][..]))
+            .collect();
+        build_xlsx_with_merges(&with_merges)
+    }
+
+    /// Like `build_xlsx`, but each sheet also carries a list of merged-cell
+    /// ranges (e.g. `"A1:B1"`) to write into a `<mergeCells>` block.
+    fn build_xlsx_with_merges(sheets: &[(&str, &[&[&str]], &[&str])]) -> Vec<u8> {
         let buf = std::io::Cursor::new(Vec::new());
         let mut zip = zip::ZipWriter::new(buf);
 
@@ -344,7 +397,7 @@ mod tests {
 
         // Collect all unique strings for shared strings table
         let mut all_strings: Vec<String> = Vec::new();
-        for (_, rows) in sheets {
+        for (_, rows, _) in sheets {
             for row in *rows {
                 for cell in *row {
                     if !cell.is_empty() {
@@ -378,7 +431,7 @@ mod tests {
 <workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
   <sheets>"#,
         );
-        for (i, (name, _)) in sheets.iter().enumerate() {
+        for (i, (name, _, _)) in sheets.iter().enumerate() {
             wb.push_str(&format!(
                 r#"
     <sheet name="{}" sheetId="{}" r:id="rId{}"/>"#,
@@ -422,7 +475,7 @@ mod tests {
         zip.write_all(wb_rels.as_bytes()).unwrap();
 
         // Worksheet files
-        for (i, (_, rows)) in sheets.iter().enumerate() {
+        for (i, (_, rows, merges)) in sheets.iter().enumerate() {
             let mut ws = String::from(
                 r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
@@ -459,7 +512,17 @@ mod tests {
                 ws.push_str("\n    </row>");
             }
 
-            ws.push_str("\n  </sheetData>\n</worksheet>");
+            ws.push_str("\n  </sheetData>");
+
+            if !merges.is_empty() {
+                ws.push_str(&format!("\n  <mergeCells count=\"{}\">", merges.len()));
+                for m in *merges {
+                    ws.push_str(&format!("\n    <mergeCell ref=\"{m}\"/>"));
+                }
+                ws.push_str("\n  </mergeCells>");
+            }
+
+            ws.push_str("\n</worksheet>");
 
             zip.start_file(format!("xl/worksheets/sheet{}.xml", i + 1), options)
                 .unwrap();
@@ -841,6 +904,132 @@ mod tests {
         assert_eq!(rows.len(), 1);
         let text = rows[0]["text"].as_str().expect("text");
         assert!(text.contains('D'));
+
+        Ok(())
+    }
+
+    #[test]
+    fn merged_header_cell_gets_col_span_and_no_duplicate_blanks() -> ruddydoc_core::Result<()> {
+        // A1:B1 merged ("Full Width Header" spans 2 columns), then a normal
+        // 2-column data row.
+        let xlsx = build_xlsx_with_merges(&[(
+            "Sheet1",
+            &[&["Full Width Header"], &["Alice", "30"]],
+            &["A1:B1"],
+        )]);
+        let (store, _meta, graph) = parse_xlsx(&xlsx, "merged.xlsx")?;
+
+        // Only 3 cells total: the merged header (1, not 2) + the 2 data
+        // cells. Before the fix, the merge's second position (B1) would
+        // also get its own blank TableCell, making it 4.
+        let sparql_cells = format!(
+            "SELECT ?c WHERE {{ GRAPH <{graph}> {{ ?c a <{}> }} }}",
+            ont::iri(ont::CLASS_TABLE_CELL),
+        );
+        let result = store.query_to_json(&sparql_cells)?;
+        let rows = result.as_array().expect("expected array");
+        assert_eq!(rows.len(), 3, "expected no blank cell for the merge's B1 span");
+
+        // The anchor cell (row 0, col 0) must carry colSpan = 2.
+        let sparql = format!(
+            "SELECT ?text ?cs WHERE {{ \
+               GRAPH <{graph}> {{ \
+                 ?c a <{}>. \
+                 ?c <{}> ?text. \
+                 ?c <{}> \"0\"^^<http://www.w3.org/2001/XMLSchema#integer>. \
+                 ?c <{}> \"0\"^^<http://www.w3.org/2001/XMLSchema#integer>. \
+                 ?c <{}> ?cs \
+               }} \
+             }}",
+            ont::iri(ont::CLASS_TABLE_CELL),
+            ont::iri(ont::PROP_CELL_TEXT),
+            ont::iri(ont::PROP_CELL_ROW),
+            ont::iri(ont::PROP_CELL_COLUMN),
+            ont::iri(ont::PROP_CELL_COL_SPAN),
+        );
+        let result = store.query_to_json(&sparql)?;
+        let rows = result.as_array().expect("expected array");
+        assert_eq!(rows.len(), 1);
+        let text = rows[0]["text"].as_str().expect("text");
+        assert!(text.contains("Full Width Header"));
+        let cs = rows[0]["cs"].as_str().expect("cs");
+        assert!(cs.contains('2'), "expected colSpan 2, got {cs:?}");
+
+        // A non-merged cell must default to rowSpan/colSpan = 1.
+        let sparql_normal = format!(
+            "SELECT ?rs ?cs WHERE {{ \
+               GRAPH <{graph}> {{ \
+                 ?c a <{}>. \
+                 ?c <{}> \"1\"^^<http://www.w3.org/2001/XMLSchema#integer>. \
+                 ?c <{}> \"0\"^^<http://www.w3.org/2001/XMLSchema#integer>. \
+                 ?c <{}> ?rs. \
+                 ?c <{}> ?cs \
+               }} \
+             }}",
+            ont::iri(ont::CLASS_TABLE_CELL),
+            ont::iri(ont::PROP_CELL_ROW),
+            ont::iri(ont::PROP_CELL_COLUMN),
+            ont::iri(ont::PROP_CELL_ROW_SPAN),
+            ont::iri(ont::PROP_CELL_COL_SPAN),
+        );
+        let result_normal = store.query_to_json(&sparql_normal)?;
+        let normal_rows = result_normal.as_array().expect("expected array");
+        assert_eq!(normal_rows.len(), 1);
+        assert!(normal_rows[0]["rs"].as_str().expect("rs").contains('1'));
+        assert!(normal_rows[0]["cs"].as_str().expect("cs").contains('1'));
+
+        Ok(())
+    }
+
+    #[test]
+    fn merged_row_span_cell() -> ruddydoc_core::Result<()> {
+        // A1:A2 merged vertically (rowspan 2), plus a distinct value in each
+        // row's second column.
+        let xlsx = build_xlsx_with_merges(&[(
+            "Sheet1",
+            &[&["Spans 2 rows", "Top"], &["", "Bottom"]],
+            &["A1:A2"],
+        )]);
+        let (store, _meta, graph) = parse_xlsx(&xlsx, "rowspan.xlsx")?;
+
+        let sparql = format!(
+            "SELECT ?text ?rs WHERE {{ \
+               GRAPH <{graph}> {{ \
+                 ?c a <{}>. \
+                 ?c <{}> ?text. \
+                 ?c <{}> \"0\"^^<http://www.w3.org/2001/XMLSchema#integer>. \
+                 ?c <{}> \"0\"^^<http://www.w3.org/2001/XMLSchema#integer>. \
+                 ?c <{}> ?rs \
+               }} \
+             }}",
+            ont::iri(ont::CLASS_TABLE_CELL),
+            ont::iri(ont::PROP_CELL_TEXT),
+            ont::iri(ont::PROP_CELL_ROW),
+            ont::iri(ont::PROP_CELL_COLUMN),
+            ont::iri(ont::PROP_CELL_ROW_SPAN),
+        );
+        let result = store.query_to_json(&sparql)?;
+        let rows = result.as_array().expect("expected array");
+        assert_eq!(rows.len(), 1);
+        let text = rows[0]["text"].as_str().expect("text");
+        assert!(text.contains("Spans 2 rows"));
+        let rs = rows[0]["rs"].as_str().expect("rs");
+        assert!(rs.contains('2'), "expected rowSpan 2, got {rs:?}");
+
+        // No TableCell should exist at (row=1, col=0) -- it's covered by the
+        // merge anchored at (0, 0).
+        let sparql_covered = format!(
+            "ASK {{ GRAPH <{graph}> {{ \
+                 ?c a <{}>. \
+                 ?c <{}> \"1\"^^<http://www.w3.org/2001/XMLSchema#integer>. \
+                 ?c <{}> \"0\"^^<http://www.w3.org/2001/XMLSchema#integer> \
+               }} }}",
+            ont::iri(ont::CLASS_TABLE_CELL),
+            ont::iri(ont::PROP_CELL_ROW),
+            ont::iri(ont::PROP_CELL_COLUMN),
+        );
+        let result_covered = store.query_to_json(&sparql_covered)?;
+        assert_eq!(result_covered, serde_json::Value::Bool(false));
 
         Ok(())
     }

@@ -668,6 +668,16 @@ fn parse_document_body(
                         in_tr = true;
                         table_col = 0;
                     }
+                    "gridBefore" if in_tr && !in_tc => {
+                        // Row starts with N grid columns skipped before its
+                        // first real <w:tc> (e.g. a ragged table where this
+                        // row has fewer leading cells than others). Without
+                        // this, `table_col` starts at 0 for every row and
+                        // this row's cells land in the wrong columns.
+                        if let Some(val) = get_attr(e, "val") {
+                            table_col = val.parse::<usize>().unwrap_or(0);
+                        }
+                    }
                     "tc" if in_tr => {
                         in_tc = true;
                         tc_text.clear();
@@ -766,6 +776,11 @@ fn parse_document_body(
                     }
                     "numId" if in_ppr => {
                         para_props.num_id = get_attr(e, "val");
+                    }
+                    "gridBefore" if in_tr && !in_tc => {
+                        if let Some(val) = get_attr(e, "val") {
+                            table_col = val.parse::<usize>().unwrap_or(0);
+                        }
                     }
                     "gridSpan" if in_tc => {
                         if let Some(val) = get_attr(e, "val") {
@@ -1994,6 +2009,63 @@ mod tests {
             .expect("expected Full Width cell");
         let cs = colspan_cell["cs"].as_str().expect("cs");
         assert!(cs.contains('2'));
+
+        Ok(())
+    }
+
+    #[test]
+    fn parse_table_with_grid_before() -> ruddydoc_core::Result<()> {
+        // Second row starts one grid column late (w:gridBefore), so its
+        // single cell must land in column 1, aligned under the first row's
+        // second column -- not shifted back to column 0.
+        let body = r#"
+    <w:tbl>
+      <w:tr>
+        <w:tc><w:p><w:r><w:t>A0</w:t></w:r></w:p></w:tc>
+        <w:tc><w:p><w:r><w:t>B0</w:t></w:r></w:p></w:tc>
+      </w:tr>
+      <w:tr>
+        <w:trPr><w:gridBefore w:val="1"/></w:trPr>
+        <w:tc><w:p><w:r><w:t>B1</w:t></w:r></w:p></w:tc>
+      </w:tr>
+    </w:tbl>"#;
+
+        let data = DocxBuilder::new()
+            .with_body(body)
+            .with_styles(default_styles())
+            .build();
+
+        let (store, _meta, graph) = parse_docx(&data)?;
+
+        let sparql = format!(
+            "SELECT ?text ?row ?col WHERE {{ \
+               GRAPH <{graph}> {{ \
+                 ?c a <{}>. \
+                 ?c <{}> ?text. \
+                 ?c <{}> ?row. \
+                 ?c <{}> ?col \
+               }} \
+             }}",
+            ont::iri(ont::CLASS_TABLE_CELL),
+            ont::iri(ont::PROP_CELL_TEXT),
+            ont::iri(ont::PROP_CELL_ROW),
+            ont::iri(ont::PROP_CELL_COLUMN),
+        );
+        let result = store.query_to_json(&sparql)?;
+        let rows = result.as_array().expect("expected array");
+        assert_eq!(rows.len(), 3);
+
+        let b1 = rows
+            .iter()
+            .find(|r| r["text"].as_str().is_some_and(|t| t.contains("B1")))
+            .expect("expected B1 cell");
+        let row = b1["row"].as_str().expect("row");
+        assert!(row.contains('1'), "expected B1 in row 1, got {row:?}");
+        let col = b1["col"].as_str().expect("col");
+        assert!(
+            col.contains('1'),
+            "expected B1 shifted into column 1 by gridBefore, got {col:?}"
+        );
 
         Ok(())
     }

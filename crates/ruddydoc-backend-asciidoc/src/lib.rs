@@ -281,6 +281,24 @@ fn detect_attribute_line(line: &str) -> Option<String> {
     }
 }
 
+/// Check whether a table-row segment is a colspan/rowspan/alignment cell
+/// specifier (e.g. `2+`, `.2+`, `2.3+`, `^`, `.^`) rather than real cell
+/// content. AsciiDoc writes these immediately before the `|` that opens a
+/// cell, so splitting the row on `|` puts the spec in its own segment ahead
+/// of the cell it applies to; without this check that segment would either
+/// leak into the output as a bogus extra cell or get concatenated onto the
+/// following cell's text.
+fn is_cell_spec_segment(segment: &str) -> bool {
+    let s = segment.trim();
+    if s.is_empty() {
+        return false;
+    }
+    let has_span =
+        s.contains('+') && s.chars().all(|c| c.is_ascii_digit() || c == '.' || c == '+');
+    let is_align = matches!(s, "^" | ">" | "<" | ".^" | ".>" | ".<");
+    has_span || is_align
+}
+
 /// Parse a table block into rows of cells.
 fn parse_table_rows(lines: &[&str]) -> Vec<Vec<String>> {
     let mut rows: Vec<Vec<String>> = Vec::new();
@@ -291,16 +309,38 @@ fn parse_table_rows(lines: &[&str]) -> Vec<Vec<String>> {
             continue;
         }
 
-        // Each table row line starts with `|`
-        if !trimmed.starts_with('|') {
+        // Every table row line contains at least one `|`. A row whose first
+        // cell carries a spec (e.g. `2+|Full Width Header`) does NOT start
+        // with `|` -- the spec precedes it -- so this must not require a
+        // leading `|`, only that one appears somewhere on the line.
+        if !trimmed.contains('|') {
             continue;
         }
 
-        let cells: Vec<String> = trimmed
-            .split('|')
-            .skip(1) // skip the empty string before the first `|`
+        let mut parts: Vec<&str> = trimmed.split('|').collect();
+        if trimmed.starts_with('|') {
+            // Only drop the first segment when it's the empty artifact of a
+            // genuine leading `|`. When the line instead starts with a cell
+            // spec (no leading `|`), that segment is real content and must
+            // flow through the `is_cell_spec_segment` filter below instead.
+            parts.remove(0);
+        }
+
+        // The packed single-line style (`|a|b|`) ends with a trailing `|`
+        // that produces one final empty artifact segment -- drop only that
+        // one segment. A row without a trailing `|` (`| a | | b`) has no
+        // such artifact, so a middle empty segment there is a real empty
+        // cell and must be kept (previously this was dropped unconditionally
+        // whenever the *whole line* didn't end in `|`, silently shifting
+        // column alignment for any row with an empty cell).
+        if trimmed.ends_with('|') && parts.last().is_some_and(|c| c.trim().is_empty()) {
+            parts.pop();
+        }
+
+        let cells: Vec<String> = parts
+            .into_iter()
+            .filter(|c| !is_cell_spec_segment(c))
             .map(|c| c.trim().to_string())
-            .filter(|c| !c.is_empty() || trimmed.ends_with('|'))
             .collect();
 
         if !cells.is_empty() {
@@ -1197,6 +1237,148 @@ some listing content
         let rows = result.as_array().expect("expected array");
         // 3 rows * 2 cols = 6 cells
         assert_eq!(rows.len(), 6);
+
+        Ok(())
+    }
+
+    #[test]
+    fn parse_table_preserves_empty_middle_cell() -> ruddydoc_core::Result<()> {
+        // Non-packed style (no trailing `|`): a blank cell in the middle
+        // must not be dropped, or every later cell in the row shifts left.
+        let adoc = "\
+|===
+| Name | Middle | Age
+| Alice |  | 30
+|===
+";
+        let (store, _meta, graph) = parse_asciidoc(adoc)?;
+
+        let sparql = format!(
+            "SELECT ?text ?row ?col WHERE {{ \
+               GRAPH <{graph}> {{ \
+                 ?c a <{}>. \
+                 ?c <{}> ?text. \
+                 ?c <{}> ?row. \
+                 ?c <{}> ?col \
+               }} \
+             }} ORDER BY ?row ?col",
+            ont::iri(ont::CLASS_TABLE_CELL),
+            ont::iri(ont::PROP_CELL_TEXT),
+            ont::iri(ont::PROP_CELL_ROW),
+            ont::iri(ont::PROP_CELL_COLUMN),
+        );
+        let result = store.query_to_json(&sparql)?;
+        let rows = result.as_array().expect("expected array");
+        // 2 rows * 3 cols = 6 cells; without the fix the empty cell is
+        // dropped and only 5 cells (misaligned) are produced.
+        assert_eq!(rows.len(), 6, "expected empty middle cell to be preserved");
+
+        // The "30" value must land in column 2 (0-indexed), not column 1.
+        let age_cell = rows
+            .iter()
+            .find(|r| r["text"].as_str().is_some_and(|t| t.contains("30")))
+            .expect("expected a cell containing 30");
+        let col = age_cell["col"].as_str().expect("col");
+        assert!(col.contains('2'), "expected Age value in column 2, got {col:?}");
+
+        Ok(())
+    }
+
+    #[test]
+    fn parse_table_packed_style_drops_trailing_phantom_cell() -> ruddydoc_core::Result<()> {
+        // Packed single-line style: the trailing `|` is a row terminator,
+        // not an extra empty cell.
+        let adoc = "\
+|===
+|Name|Age|
+|Alice|30|
+|===
+";
+        let (store, _meta, graph) = parse_asciidoc(adoc)?;
+
+        let sparql = format!(
+            "SELECT ?text ?row ?col WHERE {{ \
+               GRAPH <{graph}> {{ \
+                 ?c a <{}>. \
+                 ?c <{}> ?text. \
+                 ?c <{}> ?row. \
+                 ?c <{}> ?col \
+               }} \
+             }} ORDER BY ?row ?col",
+            ont::iri(ont::CLASS_TABLE_CELL),
+            ont::iri(ont::PROP_CELL_TEXT),
+            ont::iri(ont::PROP_CELL_ROW),
+            ont::iri(ont::PROP_CELL_COLUMN),
+        );
+        let result = store.query_to_json(&sparql)?;
+        let rows = result.as_array().expect("expected array");
+        // 2 rows * 2 cols = 4 cells; without the fix the trailing `|`
+        // produces a phantom 3rd column on every row.
+        assert_eq!(rows.len(), 4, "expected no phantom trailing cell");
+
+        let sparql_cols = format!(
+            "SELECT ?cols WHERE {{ \
+               GRAPH <{graph}> {{ \
+                 ?t a <{}>. \
+                 ?t <{}> ?cols \
+               }} \
+             }}",
+            ont::iri(ont::CLASS_TABLE_ELEMENT),
+            ont::iri(ont::PROP_COLUMN_COUNT),
+        );
+        let result_cols = store.query_to_json(&sparql_cols)?;
+        let col_rows = result_cols.as_array().expect("expected array");
+        let col_count = col_rows[0]["cols"].as_str().expect("cols");
+        assert!(col_count.contains('2'), "expected column_count 2, got {col_count:?}");
+
+        Ok(())
+    }
+
+    #[test]
+    fn parse_table_strips_colspan_specifier() -> ruddydoc_core::Result<()> {
+        let adoc = "\
+|===
+2+|Full Width Header
+|Alice|30
+|===
+";
+        let (store, _meta, graph) = parse_asciidoc(adoc)?;
+
+        let sparql = format!(
+            "SELECT ?text WHERE {{ \
+               GRAPH <{graph}> {{ \
+                 ?c a <{}>. \
+                 ?c <{}> ?text \
+               }} \
+             }}",
+            ont::iri(ont::CLASS_TABLE_CELL),
+            ont::iri(ont::PROP_CELL_TEXT),
+        );
+        let result = store.query_to_json(&sparql)?;
+        let rows = result.as_array().expect("expected array");
+
+        // The "2+" spec segment must not appear as its own cell's text.
+        assert!(
+            !rows
+                .iter()
+                .any(|r| r["text"].as_str().is_some_and(|t| t.contains("2+"))),
+            "colspan specifier leaked into cell text: {rows:?}"
+        );
+
+        let header = rows
+            .iter()
+            .find(|r| {
+                r["text"]
+                    .as_str()
+                    .is_some_and(|t| t.contains("Full Width Header"))
+            })
+            .expect("expected Full Width Header cell");
+        assert!(
+            header["text"]
+                .as_str()
+                .expect("text")
+                .contains("Full Width Header")
+        );
 
         Ok(())
     }
